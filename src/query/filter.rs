@@ -1,3 +1,4 @@
+use crate::query::lexer::{self, tokenize_filter_query};
 use crate::{tag_index::TagIndex, SeriesId};
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -161,4 +162,109 @@ impl Node {
 pub struct EqLeaf {
     pub key: String,
     pub value: String,
+}
+
+// TODO: NOT
+
+use std::collections::VecDeque;
+
+#[derive(Debug)]
+pub enum Item {
+    Identifier((String, String)),
+    And,
+    Or,
+    ParanOpen,
+    ParanClose,
+}
+
+pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
+    let mut output_queue = VecDeque::new();
+    let mut op_stack = VecDeque::new();
+
+    for tok in tokenize_filter_query(s) {
+        let tok = tok?;
+
+        match tok {
+            lexer::Token::Identifier(id) => {
+                let mut splits = id.split(':');
+                let k = splits.next().unwrap().to_owned();
+                let v = splits.next().unwrap().to_owned();
+                output_queue.push_back(Item::Identifier((k, v)));
+            }
+            lexer::Token::And => {
+                op_stack.push_back(Item::And);
+            }
+            lexer::Token::Or => {
+                loop {
+                    let Some(top) = op_stack.back() else {
+                        break;
+                    };
+                    if matches!(top, Item::And) {
+                        output_queue.push_back(op_stack.pop_back().unwrap());
+                    } else {
+                        break;
+                    }
+                }
+
+                op_stack.push_back(Item::Or);
+            }
+            lexer::Token::ParanOpen => {
+                op_stack.push_back(Item::ParanOpen);
+            }
+            lexer::Token::ParanClose => {
+                loop {
+                    let Some(top) = op_stack.back() else {
+                        break;
+                    };
+                    if matches!(top, Item::ParanOpen) {
+                        break;
+                    }
+                    let top = op_stack.pop_back().unwrap();
+                    if op_stack.is_empty() {
+                        return Err(());
+                    }
+                    output_queue.push_back(top);
+                }
+                let Some(top) = op_stack.pop_back() else {
+                    return Err(());
+                };
+                if !matches!(top, Item::ParanOpen) {
+                    return Err(());
+                }
+            }
+        }
+    }
+
+    while let Some(top) = op_stack.pop_back() {
+        if matches!(top, Item::ParanOpen) {
+            return Err(());
+        }
+        output_queue.push_back(top);
+    }
+
+    let mut buf: Vec<Node> = Vec::new();
+
+    for item in output_queue {
+        match item {
+            Item::Identifier((key, value)) => {
+                buf.push(Node::Eq(EqLeaf { key, value }));
+            }
+            Item::And => {
+                let left = buf.pop().unwrap();
+                let right = buf.pop().unwrap();
+                buf.push(Node::And(vec![left, right]));
+            }
+            Item::Or => {
+                let left = buf.pop().unwrap();
+                let right = buf.pop().unwrap();
+                buf.push(Node::Or(vec![left, right]));
+            }
+            Item::ParanOpen => return Err(()),
+            Item::ParanClose => return Err(()),
+        }
+    }
+
+    debug_assert_eq!(1, buf.len());
+
+    Ok(buf.pop().unwrap())
 }

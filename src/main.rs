@@ -4,9 +4,9 @@ mod query;
 mod reader;
 mod smap;
 mod tag_index;
+mod tag_sets;
 
 use db::Database;
-use query::parse_filter_query;
 use std::{ops::Bound, path::Path, time::Instant};
 
 type SeriesId = u64;
@@ -34,61 +34,62 @@ fn main() -> fjall::Result<()> {
 
     let metric_name = "cpu.total";
 
-    for host in ["h-1", "h-2", "h-3", "i-187"] {
-        for idx in 0..1_000 {
-            db.write(
-                metric_name,
-                idx,
-                2.0,
-                &map! {
-                    "env" => "prod",
-                    "service" => "db",
-                    "host" => host,
-                },
-            )?;
+    {
+        use rand::Rng;
+
+        for host in ["h-1", "h-2", "h-3", "i-187"] {
+            let mut rng = rand::thread_rng();
+            for idx in 0..100 {
+                // Generate a value that starts low and increases over time with some random variation
+                let base_value: f64 = if idx < 50 {
+                    10.0 // Low load
+                } else {
+                    75.0 // High load
+                };
+
+                // Add some random variation
+                let value = (base_value + rng.gen_range(-5.0..5.0)).max(0.0);
+
+                db.write(
+                    metric_name,
+                    idx,
+                    value,
+                    &map! {
+                        "env" => "prod",
+                        "service" => "db",
+                        "host" => host,
+                    },
+                )?;
+            }
         }
     }
 
-    db.write(
-        metric_name,
-        0,
-        20.0,
-        &map! {
-            "env" => "dev",
-            "service" => "db",
-            "host" => "h-1",
-        },
-    )?;
-    db.write(
-        metric_name,
-        0,
-        20.0,
-        &map! {
-            "env" => "dev",
-            "service" => "db",
-            "host" => "h-2",
-        },
-    )?;
-    db.write(
-        metric_name,
-        0,
-        20.0,
-        &map! {
-            "env" => "dev",
-            "service" => "db",
-            "host" => "h-3",
-        },
-    )?;
+    let filter_expr = "env:prod AND service:db";
 
-    let query_string = "service:db AND host:i-187";
-    let filter = parse_filter_query(query_string).unwrap();
+    /* for sample in db
+        .query_with_filter(
+            metric_name,
+            filter_expr,
+            (Bound::Unbounded, Bound::Unbounded),
+        )?
+        .unwrap()
+    {
+        let sample = sample?;
+        eprintln!("{sample:?}");
+    } */
 
     let start = Instant::now();
-    db.query(
+
+    let avg = db.aggregate_avg(
         metric_name,
-        &filter,
-        (Bound::Included(500), Bound::Unbounded),
+        filter_expr,
+        (Bound::Unbounded, Bound::Unbounded),
+        "host",
+        10,
     )?;
+
+    eprintln!("AVG result: {avg:#?}");
+
     log::info!("done in {:?}", start.elapsed());
 
     Ok(())

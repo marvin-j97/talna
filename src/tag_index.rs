@@ -3,6 +3,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use fjall::{PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
 use std::sync::Arc;
 
+/// Inverted index, mapping key:value tag pairs to series IDs
 pub struct TagIndex {
     partition: TxPartition,
 }

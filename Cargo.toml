@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [profile.release]
-debug = true
+strip = "debuginfo"
+# lto = true
 
 [dependencies]
 byteorder = "1.5.0"
@@ -16,6 +17,7 @@ fjall = { path = "../fjall", default-features = false, features = [
 ] }
 log = "0.4.22"
 logos = "0.14.0"
+rand = "0.8.5"
 regex = "1.10.5"
 self_cell = "1.0.4"
 test-log = "0.2.16"

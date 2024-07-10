@@ -1,14 +1,14 @@
-use byteorder::{BigEndian, ReadBytesExt};
-use std::{collections::BinaryHeap, io::Cursor};
+use crate::SeriesId;
+use std::collections::BinaryHeap;
 
 #[derive(Debug)]
-struct HeapItem(usize, u128, f32);
+struct HeapItem(usize, StreamItem);
 
 impl Eq for HeapItem {}
 
 impl PartialEq for HeapItem {
     fn eq(&self, other: &Self) -> bool {
-        (self.0, self.1).eq(&(other.0, other.1))
+        (self.0, self.1.ts).eq(&(other.0, other.1.ts))
     }
 }
 
@@ -20,7 +20,7 @@ impl PartialOrd for HeapItem {
 
 impl Ord for HeapItem {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.1.cmp(&self.1)
+        other.1.ts.cmp(&self.1.ts)
     }
 }
 
@@ -33,13 +33,20 @@ macro_rules! fail_iter {
     };
 }
 
-pub struct Merger<I: Iterator<Item = fjall::Result<(fjall::UserKey, fjall::UserValue)>>> {
+#[derive(Debug)]
+pub struct StreamItem {
+    pub series_id: SeriesId,
+    pub ts: u128,
+    pub value: f64,
+}
+
+pub struct Merger<I: Iterator<Item = fjall::Result<StreamItem>>> {
     readers: Vec<I>,
     heap: BinaryHeap<HeapItem>,
     is_initialized: bool,
 }
 
-impl<I: Iterator<Item = fjall::Result<(fjall::UserKey, fjall::UserValue)>>> Merger<I> {
+impl<I: Iterator<Item = fjall::Result<StreamItem>>> Merger<I> {
     pub fn new(readers: Vec<I>) -> Self {
         Self {
             readers,
@@ -49,23 +56,15 @@ impl<I: Iterator<Item = fjall::Result<(fjall::UserKey, fjall::UserValue)>>> Merg
     }
 
     fn advance(&mut self, idx: usize) -> fjall::Result<()> {
-        if let Some(kv) = self.readers.get_mut(idx).unwrap().next() {
-            let (k, v) = kv?;
-
-            let mut k = Cursor::new(k);
-            let k = k.read_u128::<BigEndian>()?;
-
-            let mut v = Cursor::new(v);
-            let v = v.read_f32::<BigEndian>()?;
-
-            self.heap.push(HeapItem(idx, k, v));
+        if let Some(item) = self.readers.get_mut(idx).unwrap().next() {
+            self.heap.push(HeapItem(idx, item?));
         }
         Ok(())
     }
 }
 
-impl<I: Iterator<Item = fjall::Result<(fjall::UserKey, fjall::UserValue)>>> Iterator for Merger<I> {
-    type Item = fjall::Result<(u128, f32)>;
+impl<I: Iterator<Item = fjall::Result<StreamItem>>> Iterator for Merger<I> {
+    type Item = fjall::Result<StreamItem>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.is_initialized {
@@ -75,10 +74,13 @@ impl<I: Iterator<Item = fjall::Result<(fjall::UserKey, fjall::UserValue)>>> Iter
             self.is_initialized = true;
         }
 
-        let head = self.heap.pop()?;
+        let mut head = self.heap.pop()?;
 
         fail_iter!(self.advance(head.0));
 
-        Some(Ok((head.1, head.2)))
+        // NOTE: Invert timestamp back to original value
+        head.1.ts = !head.1.ts;
+
+        Some(Ok(head.1))
     }
 }
