@@ -250,14 +250,14 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
                 buf.push(Node::Eq(EqLeaf { key, value }));
             }
             Item::And => {
-                let left = buf.pop().unwrap();
-                let right = buf.pop().unwrap();
-                buf.push(Node::And(vec![left, right]));
+                let b = buf.pop().unwrap();
+                let a = buf.pop().unwrap();
+                buf.push(Node::And(vec![a, b]));
             }
             Item::Or => {
-                let left = buf.pop().unwrap();
-                let right = buf.pop().unwrap();
-                buf.push(Node::Or(vec![left, right]));
+                let b = buf.pop().unwrap();
+                let a = buf.pop().unwrap();
+                buf.push(Node::Or(vec![a, b]));
             }
             Item::ParanOpen => return Err(()),
             Item::ParanClose => return Err(()),
