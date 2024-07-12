@@ -1,6 +1,5 @@
 use crate::merge::StreamItem;
 use crate::query::filter::{parse_filter_query, Node as Filter};
-use crate::reader::Reader;
 use crate::smap::SeriesMapping;
 use crate::tag_index::TagIndex;
 use crate::tag_sets::TagSets;
@@ -20,8 +19,8 @@ const METRICS_NAME_CHARS: &str = "abcdefghijklmnopqrstuvwxyz_.";
 
 #[derive(Clone)]
 pub struct Series {
-    id: SeriesId,
-    inner: Partition,
+    pub(crate) id: SeriesId,
+    pub(crate) inner: Partition,
 }
 
 impl Series {
@@ -31,29 +30,27 @@ impl Series {
     }
 }
 
+pub struct QueryStream {
+    pub(crate) affected_series: Vec<SeriesId>,
+    pub(crate) reader: Box<dyn Iterator<Item = fjall::Result<StreamItem>>>,
+}
+
 pub struct Database {
-    keyspace: TxKeyspace,
+    pub(crate) keyspace: TxKeyspace,
     series: RwLock<BTreeMap<SeriesId, Series>>,
     smap: SeriesMapping,
     tag_index: TagIndex,
-    tag_sets: TagSets,
+    pub(crate) tag_sets: TagSets,
 }
 
 // TODO: series should be stored in FIFO... but FIFO should not cause write stalls
 // if disjoint...
 
-#[derive(Debug)]
-pub struct Bucket {
-    start: u128,
-    value: f64,
-    len: usize,
-}
-
 impl Database {
-    pub fn new<P: AsRef<Path>>(path: P) -> fjall::Result<Self> {
+    pub fn new<P: AsRef<Path>>(path: P, cache_mib: u64) -> fjall::Result<Self> {
         let keyspace = fjall::Config::new(path)
             .block_cache(Arc::new(BlockCache::with_capacity_bytes(
-                128 * 1_024 * 1_024,
+                cache_mib * 1_024 * 1_024,
             )))
             .open_transactional()?;
 
@@ -101,7 +98,7 @@ impl Database {
         &self,
         series_ids: &[SeriesId],
         (min, max): (Bound<u128>, Bound<u128>),
-    ) -> Reader {
+    ) -> Merger<impl DoubleEndedIterator<Item = fjall::Result<StreamItem>>> {
         // NOTE: Invert timestamps because stored in reverse order
         let range = (
             max.map(|x| u128::to_be_bytes(!x)),
@@ -117,43 +114,46 @@ impl Database {
 
         drop(lock);
 
-        Reader::new(readers, |partitions| {
-            let readers = partitions
-                .iter()
-                .map(|series| {
-                    series.inner.range(range).map(|x| match x {
-                        Ok((k, v)) => {
-                            let mut k = Cursor::new(k);
-                            let ts = k.read_u128::<BigEndian>()?;
+        let readers = readers
+            .into_iter()
+            .map(|series| {
+                series.inner.range(range).map(move |x| match x {
+                    Ok((k, v)) => {
+                        let mut k = Cursor::new(k);
+                        let ts = k.read_u128::<BigEndian>()?;
 
-                            let mut v = Cursor::new(v);
-                            let value = v.read_f64::<BigEndian>()?;
+                        let mut v = Cursor::new(v);
+                        let value = v.read_f64::<BigEndian>()?;
 
-                            Ok(StreamItem {
-                                series_id: series.id,
-                                ts,
-                                value,
-                            })
-                        }
-                        Err(e) => Err(e),
-                    })
+                        Ok(StreamItem {
+                            series_id: series.id,
+                            ts,
+                            value,
+                        })
+                    }
+                    Err(e) => Err(e),
                 })
-                .collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
 
-            Box::new(Merger::new(readers))
-        })
+        Merger::new(readers)
     }
 
-    fn start_query(
+    pub(crate) fn start_query(
         &self,
         metric: &str,
-        filter: &Filter,
+        filter_expr: &str,
         (min, max): (Bound<u128>, Bound<u128>),
-    ) -> fjall::Result<Option<(Vec<SeriesId>, Reader)>> {
-        let series_ids = filter.evaluate(&self.tag_index, metric)?;
+    ) -> fjall::Result<QueryStream> {
+        let filter = parse_filter_query(filter_expr).unwrap();
+
+        let series_ids = filter.evaluate(&self.smap, &self.tag_index, metric)?;
         if series_ids.is_empty() {
             log::debug!("Query did not match any series");
-            return Ok(None);
+            return Ok(QueryStream {
+                affected_series: vec![],
+                reader: Box::new(std::iter::empty()),
+            });
         }
 
         log::debug!(
@@ -161,92 +161,43 @@ impl Database {
         );
 
         let reader = self.get_reader(&series_ids, (min, max));
-        Ok(Some((series_ids, reader)))
+
+        Ok(QueryStream {
+            affected_series: series_ids,
+            reader: Box::new(reader),
+        })
     }
 
-    pub fn aggregate_avg(
+    pub fn avg<'a>(
+        &'a self,
+        metric: &'a str,
+        group_by: &'a str,
+    ) -> crate::agg::avg::Aggregator<'a> {
+        const MINUTE_IN_NS: u128 = 900_000_000_000;
+
+        crate::agg::avg::Aggregator {
+            database: self,
+            metric_name: metric,
+            filter_expr: "*", // TODO: need wildcard
+            bucket_width: MINUTE_IN_NS,
+            group_by,
+        }
+    }
+
+    /*  // TODO: QueryInput struct
+    pub fn query(
         &self,
         metric: &str,
         filter_expression: &str,
         (min, max): (Bound<u128>, Bound<u128>),
-        group_by: &str,
-        bucket_width: u128,
-    ) -> fjall::Result<HashMap<String, Vec<Bucket>>> {
-        let filter = parse_filter_query(filter_expression).unwrap();
-
-        let Some((series_ids, reader)) = self.start_query(metric, &filter, (min, max))? else {
-            log::debug!("Query did not match any series");
-            return Ok(HashMap::new());
-        };
-
-        let tagsets = series_ids
-            .iter()
-            .map(|x| Ok((*x, self.tag_sets.get(*x)?)))
-            .collect::<fjall::Result<HashMap<_, _>>>()?;
-
-        let mut result: HashMap<String, Vec<Bucket>> = HashMap::new();
-
-        for data_point in reader {
-            let data_point = data_point?;
-
-            let Some(tagset) = tagsets.get(&data_point.series_id) else {
-                continue;
-            };
-            let Some(group) = tagset.get(group_by) else {
-                continue;
-            };
-
-            result
-                .entry(group.clone())
-                .and_modify(|buckets| {
-                    // NOTE: Cannot be empty
-                    let last = buckets.last_mut().unwrap();
-
-                    if (last.start - data_point.ts) < bucket_width {
-                        // Add to bucket
-                        last.len += 1;
-                        last.value += data_point.value;
-                    } else {
-                        // Insert next bucket
-                        buckets.push(Bucket {
-                            start: data_point.ts,
-                            len: 1,
-                            value: data_point.value,
-                        });
-                    }
-                })
-                .or_insert_with(|| {
-                    vec![Bucket {
-                        start: data_point.ts,
-                        len: 1,
-                        value: data_point.value,
-                    }]
-                });
-        }
-
-        for buckets in result.values_mut() {
-            for bucket in buckets {
-                // NOTE: Do AVG
-                bucket.value /= bucket.len as f64;
-            }
-        }
-
-        Ok(result)
-    }
-
-    // TODO: QueryInput struct
-    pub fn query_with_filter(
-        &self,
-        metric: &str,
-        filter_expression: &str,
-        (min, max): (Bound<u128>, Bound<u128>),
-    ) -> fjall::Result<Option<Reader>> {
+    ) -> fjall::Result<Option<Merger<impl DoubleEndedIterator<Item = fjall::Result<StreamItem>>>>>
+    {
         let filter = parse_filter_query(filter_expression).unwrap();
 
         Ok(self
             .start_query(metric, &filter, (min, max))?
-            .map(|(_, reader)| reader))
-    }
+            .map(|stream| reader))
+    } */
 
     pub fn write(
         &self,

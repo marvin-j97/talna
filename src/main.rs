@@ -1,3 +1,4 @@
+mod agg;
 mod db;
 mod merge;
 mod query;
@@ -7,7 +8,7 @@ mod tag_index;
 mod tag_sets;
 
 use db::Database;
-use std::{ops::Bound, path::Path, time::Instant};
+use std::{path::Path, time::Instant};
 
 type SeriesId = u64;
 
@@ -30,7 +31,7 @@ fn main() -> fjall::Result<()> {
         std::fs::remove_dir_all(path)?;
     }
 
-    let db = Database::new(path)?;
+    let db = Database::new(path, 64)?;
 
     let metric_name = "cpu.total";
 
@@ -39,7 +40,7 @@ fn main() -> fjall::Result<()> {
 
         for host in ["h-1", "h-2", "h-3", "i-187"] {
             let mut rng = rand::thread_rng();
-            for idx in 0..100 {
+            for idx in 0..100_000 {
                 // Generate a value that starts low and increases over time with some random variation
                 let base_value: f64 = if idx < 50 {
                     10.0 // Low load
@@ -64,33 +65,59 @@ fn main() -> fjall::Result<()> {
         }
     }
 
-    let filter_expr = "env:prod AND service:db";
+    // TODO: allow tag:* as well
 
-    /* for sample in db
-        .query_with_filter(
-            metric_name,
-            filter_expr,
-            (Bound::Unbounded, Bound::Unbounded),
-        )?
-        .unwrap()
+    let filter_expr = "env:prod AND service:db AND (host:h-1 OR host:h-2)";
+
     {
-        let sample = sample?;
-        eprintln!("{sample:?}");
-    } */
+        let start = Instant::now();
 
-    let start = Instant::now();
+        let avg = db
+            .avg(metric_name, "host")
+            .filter(filter_expr)
+            .bucket(100_000)
+            .run()?;
 
-    let avg = db.aggregate_avg(
-        metric_name,
-        filter_expr,
-        (Bound::Unbounded, Bound::Unbounded),
-        "host",
-        10,
-    )?;
+        log::info!("done in {:?}", start.elapsed());
 
-    eprintln!("AVG result: {avg:#?}");
+        log::info!(
+            "AVG result: {avg:#?}, BCS: {} MiB, blocks: {}",
+            db.keyspace.inner.config.block_cache.size() / 1_024 / 1_024,
+            db.keyspace.inner.config.block_cache.len(),
+        );
+    }
 
-    log::info!("done in {:?}", start.elapsed());
+    for _ in 0..10 {
+        let start = Instant::now();
+
+        let _avg = db
+            .avg(metric_name, "host")
+            .filter(filter_expr)
+            .bucket(100_000)
+            .run()?;
+
+        log::info!("done in {:?}", start.elapsed());
+    }
+
+    {
+        log::info!("WILDCARD");
+        let filter_expr = "*";
+
+        let start = Instant::now();
+
+        let avg = db
+            .avg(metric_name, "host")
+            .filter(filter_expr)
+            .bucket(100_000)
+            .run()?;
+        log::info!("done in {:?}", start.elapsed());
+
+        eprintln!(
+            "AVG result: {avg:#?}, BCS: {} MiB, blocks: {}",
+            db.keyspace.inner.config.block_cache.size() / 1_024 / 1_024,
+            db.keyspace.inner.config.block_cache.len(),
+        );
+    }
 
     Ok(())
 }

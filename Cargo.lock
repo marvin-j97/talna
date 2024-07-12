@@ -250,6 +250,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "guardian"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6817154789d2e9bb2af0486500e774af579d0e6539247044f06d803b141448b5"
+
+[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -343,6 +349,7 @@ dependencies = [
  "crossbeam-skiplist",
  "double-ended-peekable",
  "enum_dispatch",
+ "guardian",
  "log",
  "lz4_flex",
  "miniz_oxide",

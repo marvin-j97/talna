@@ -1,7 +1,7 @@
 use crate::SeriesId;
 use byteorder::{BigEndian, ReadBytesExt};
 use fjall::{PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 pub struct SeriesMapping {
     partition: TxPartition,
@@ -34,5 +34,20 @@ impl SeriesMapping {
             let mut reader = &bytes[..];
             reader.read_u64::<BigEndian>().expect("should deserialize")
         }))
+    }
+
+    pub fn list_all(&self) -> fjall::Result<HashSet<SeriesId>> {
+        // TODO: read_tx
+        self.partition
+            .inner()
+            .iter()
+            .map(|kv| match kv {
+                Ok((_, v)) => {
+                    let mut reader = &v[..];
+                    Ok(reader.read_u64::<BigEndian>().expect("should deserialize"))
+                }
+                Err(e) => Err(e),
+            })
+            .collect::<fjall::Result<HashSet<_>>>()
     }
 }

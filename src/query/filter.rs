@@ -1,5 +1,7 @@
 use crate::query::lexer::{self, tokenize_filter_query};
+use crate::smap::SeriesMapping;
 use crate::{tag_index::TagIndex, SeriesId};
+use std::collections::VecDeque;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Debug)]
@@ -7,6 +9,7 @@ pub enum Node {
     And(Vec<Node>),
     Or(Vec<Node>),
     Eq(EqLeaf),
+    AllStar,
 }
 
 impl std::fmt::Display for Node {
@@ -31,6 +34,7 @@ impl std::fmt::Display for Node {
                     .collect::<Vec<_>>()
                     .join(" OR ")
             ),
+            Node::AllStar => write!(f, "*"),
         }
     }
 }
@@ -128,10 +132,12 @@ fn union(vecs: Vec<Vec<u64>>) -> Vec<u64> {
 impl Node {
     pub fn evaluate(
         &self,
+        smap: &SeriesMapping,
         tag_index: &TagIndex,
         metric_name: &str,
     ) -> fjall::Result<Vec<SeriesId>> {
         match self {
+            Node::AllStar => Ok(smap.list_all()?.into_iter().collect()),
             Node::Eq(leaf) => {
                 let term = format!("{metric_name}#{}:{}", leaf.key, leaf.value);
                 tag_index.query(&term)
@@ -140,7 +146,7 @@ impl Node {
                 // TODO: evaluate lazily...
                 let ids = children
                     .iter()
-                    .map(|c| Self::evaluate(c, tag_index, metric_name))
+                    .map(|c| Self::evaluate(c, smap, tag_index, metric_name))
                     .collect::<fjall::Result<Vec<_>>>()?;
 
                 Ok(intersection(ids))
@@ -148,7 +154,7 @@ impl Node {
             Node::Or(children) => {
                 let ids = children
                     .iter()
-                    .map(|c| Self::evaluate(c, tag_index, metric_name))
+                    .map(|c| Self::evaluate(c, smap, tag_index, metric_name))
                     .collect::<fjall::Result<Vec<_>>>()?;
 
                 Ok(union(ids))
@@ -166,8 +172,6 @@ pub struct EqLeaf {
 
 // TODO: NOT
 
-use std::collections::VecDeque;
-
 #[derive(Debug)]
 pub enum Item {
     Identifier((String, String)),
@@ -178,6 +182,10 @@ pub enum Item {
 }
 
 pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
+    if s == "*" {
+        return Ok(Node::AllStar);
+    }
+
     let mut output_queue = VecDeque::new();
     let mut op_stack = VecDeque::new();
 
