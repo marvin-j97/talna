@@ -1,5 +1,5 @@
 # talna
 
-Ilocano: Peace, senerity
+Ilocano: Peace, Serenity
 
 Icelandic, Old Norse: Numbers
