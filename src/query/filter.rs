@@ -4,11 +4,19 @@ use crate::{tag_index::TagIndex, SeriesId};
 use std::collections::VecDeque;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
+// TODO: lifetime
 #[derive(Debug)]
+pub struct KvPair {
+    pub key: String,
+    pub value: String,
+}
+
+#[derive(Debug)]
+z
 pub enum Node {
     And(Vec<Node>),
     Or(Vec<Node>),
-    Eq(EqLeaf),
+    Eq(KvPair),
     AllStar,
 }
 
@@ -163,12 +171,6 @@ impl Node {
     }
 }
 
-// TODO: lifetime
-#[derive(Debug)]
-pub struct EqLeaf {
-    pub key: String,
-    pub value: String,
-}
 
 // TODO: NOT
 
