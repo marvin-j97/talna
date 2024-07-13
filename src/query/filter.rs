@@ -12,7 +12,6 @@ pub struct KvPair {
 }
 
 #[derive(Debug)]
-z
 pub enum Node {
     And(Vec<Node>),
     Or(Vec<Node>),
@@ -171,7 +170,6 @@ impl Node {
     }
 }
 
-
 // TODO: NOT
 
 #[derive(Debug)]
@@ -257,7 +255,7 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
     for item in output_queue {
         match item {
             Item::Identifier((key, value)) => {
-                buf.push(Node::Eq(EqLeaf { key, value }));
+                buf.push(Node::Eq(KvPair { key, value }));
             }
             Item::And => {
                 let b = buf.pop().unwrap();
