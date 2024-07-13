@@ -80,11 +80,7 @@ fn main() -> fjall::Result<()> {
 
         log::info!("done in {:?}", start.elapsed());
 
-        log::info!(
-            "AVG result: {avg:#?}, BCS: {} MiB, blocks: {}",
-            db.keyspace.inner.config.block_cache.size() / 1_024 / 1_024,
-            db.keyspace.inner.config.block_cache.len(),
-        );
+        log::info!("AVG result: {avg:#?}");
     }
 
     for _ in 0..10 {
@@ -112,11 +108,7 @@ fn main() -> fjall::Result<()> {
             .run()?;
         log::info!("done in {:?}", start.elapsed());
 
-        eprintln!(
-            "AVG result: {avg:#?}, BCS: {} MiB, blocks: {}",
-            db.keyspace.inner.config.block_cache.size() / 1_024 / 1_024,
-            db.keyspace.inner.config.block_cache.len(),
-        );
+        eprintln!("AVG result: {avg:#?}");
     }
 
     Ok(())
