@@ -1,19 +1,17 @@
 use crate::merge::StreamItem;
-use crate::query::filter::{parse_filter_query, Node as Filter};
+use crate::query::filter::parse_filter_query;
 use crate::smap::SeriesMapping;
 use crate::tag_index::TagIndex;
 use crate::tag_sets::TagSets;
+use crate::Value;
 use crate::{merge::Merger, SeriesId};
 use byteorder::{BigEndian, ReadBytesExt};
 use fjall::{BlockCache, Partition, PartitionCreateOptions, TxKeyspace};
 use std::io::Cursor;
 use std::sync::Arc;
-use std::{
-    collections::{BTreeMap, HashMap},
-    ops::Bound,
-    path::Path,
-    sync::RwLock,
-};
+use std::{collections::BTreeMap, ops::Bound, path::Path, sync::RwLock};
+
+pub type TagSet = Vec<(String, String)>;
 
 const METRICS_NAME_CHARS: &str = "abcdefghijklmnopqrstuvwxyz_.";
 
@@ -24,7 +22,7 @@ pub struct Series {
 }
 
 impl Series {
-    pub fn insert(&self, ts: u128, value: f64) -> fjall::Result<()> {
+    pub fn insert(&self, ts: u128, value: Value) -> fjall::Result<()> {
         // NOTE: Invert timestamp to store in reverse order
         self.inner.insert((!ts).to_be_bytes(), value.to_be_bytes())
     }
@@ -68,28 +66,38 @@ impl Database {
     }
 
     fn get_series_name(series_id: SeriesId) -> String {
-        format!("s#{series_id}")
+        format!("talna#s#{series_id}")
     }
 
-    pub(crate) fn join_tags(tags: &HashMap<String, String>) -> String {
+    pub(crate) fn join_tags(tags: &[(String, String)]) -> String {
         // Sort tags
         let mut tags = tags.iter().collect::<Vec<_>>();
         tags.sort();
 
-        tags.iter()
-            .enumerate()
-            .fold("".to_string(), |mut s, (idx, (key, value))| {
-                if idx > 0 {
-                    s.push(';');
-                }
-                s.push_str(key);
-                s.push(':');
-                s.push_str(value);
-                s
-            })
+        // Precompute the total length of the resulting string to avoid multiple reallocations.
+        let total_len: usize = tags
+            .iter()
+            .map(|(key, value)| key.len() + value.len() + 1) // +1 for the ':' between key and value
+            .sum::<usize>()
+            + tags.len().saturating_sub(1); // Add space for the semicolons
+
+        // Preallocate memory for the resulting string
+        let mut result = String::with_capacity(total_len);
+
+        // Join the tags into the result string
+        for (idx, (key, value)) in tags.iter().enumerate() {
+            if idx > 0 {
+                result.push(';');
+            }
+            result.push_str(key);
+            result.push(':');
+            result.push_str(value);
+        }
+
+        result
     }
 
-    pub(crate) fn create_series_key(metric: &str, tags: &HashMap<String, String>) -> String {
+    pub(crate) fn create_series_key(metric: &str, tags: &[(String, String)]) -> String {
         let joined_tags = Self::join_tags(tags);
         format!("{metric}#{joined_tags}")
     }
@@ -181,6 +189,8 @@ impl Database {
             filter_expr: "*", // TODO: need wildcard
             bucket_width: MINUTE_IN_NS,
             group_by,
+            max_ts: None,
+            min_ts: None,
         }
     }
 
@@ -203,8 +213,8 @@ impl Database {
         &self,
         metric: &str,
         ts: u128,
-        value: f64,
-        tags: &HashMap<String, String>,
+        value: Value,
+        tags: &[(String, String)],
     ) -> fjall::Result<()> {
         if !metric.chars().all(|c| METRICS_NAME_CHARS.contains(c)) {
             panic!("oops");
@@ -238,8 +248,8 @@ impl Database {
             let partition = self.keyspace.open_partition(
                 &Self::get_series_name(next_series_id),
                 PartitionCreateOptions::default()
-                    .block_size(128_000)
-                    .compression(fjall::CompressionType::Miniz(6)),
+                    .block_size(64_000)
+                    .compression(fjall::CompressionType::Lz4),
             )?;
 
             series_lock.insert(
@@ -277,5 +287,48 @@ impl Database {
         series.insert(ts, value)?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tagset;
+
+    #[test_log::test]
+    fn create_series_key() {
+        assert_eq!(
+            "cpu.total#service:web",
+            Database::create_series_key("cpu.total", tagset!("service" => "web"))
+        );
+    }
+
+    #[test_log::test]
+    fn create_series_key_2() {
+        assert_eq!(
+            "cpu.total#host:i-187;service:web",
+            Database::create_series_key(
+                "cpu.total",
+                tagset!(
+                        "service" => "web",
+                        "host" => "i-187",
+                )
+            )
+        );
+    }
+
+    #[test_log::test]
+    fn create_series_key_3() {
+        assert_eq!(
+            "cpu.total#env:dev;host:i-187;service:web",
+            Database::create_series_key(
+                "cpu.total",
+                tagset!(
+                    "service" => "web",
+                    "host" => "i-187",
+                    "env" => "dev"
+                )
+            )
+        );
     }
 }

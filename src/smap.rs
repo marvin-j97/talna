@@ -1,7 +1,9 @@
 use crate::SeriesId;
 use byteorder::{BigEndian, ReadBytesExt};
-use fjall::{PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
-use std::{collections::HashSet, sync::Arc};
+use fjall::{CompressionType, PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
+use std::collections::HashSet;
+
+const PARTITION_NAME: &str = "talna#smap";
 
 pub struct SeriesMapping {
     partition: TxPartition,
@@ -9,18 +11,12 @@ pub struct SeriesMapping {
 
 impl SeriesMapping {
     pub fn new(keyspace: &TxKeyspace) -> fjall::Result<Self> {
-        use fjall::{compaction::SizeTiered, CompressionType};
-
         let opts = PartitionCreateOptions::default()
             .block_size(4_096)
-            .compression(CompressionType::Lz4);
+            .compression(CompressionType::Lz4)
+            .max_memtable_size(4_000_000);
 
-        let partition = keyspace.open_partition("smap", opts)?;
-
-        partition.inner().set_max_memtable_size(4_000_000);
-        partition
-            .inner()
-            .set_compaction_strategy(Arc::new(SizeTiered::new(4_000_000)));
+        let partition = keyspace.open_partition(PARTITION_NAME, opts)?;
 
         Ok(Self { partition })
     }

@@ -1,6 +1,8 @@
 use crate::SeriesId;
-use fjall::{PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
-use std::{collections::HashMap, sync::Arc};
+use fjall::{CompressionType, PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
+use std::collections::HashMap;
+
+const PARTITION_NAME: &str = "talna#tags";
 
 /// Maps Series IDs to their tags
 pub struct TagSets {
@@ -9,18 +11,12 @@ pub struct TagSets {
 
 impl TagSets {
     pub fn new(keyspace: &TxKeyspace) -> fjall::Result<Self> {
-        use fjall::{compaction::SizeTiered, CompressionType};
-
         let opts = PartitionCreateOptions::default()
             .block_size(4_096)
-            .compression(CompressionType::Lz4);
+            .compression(CompressionType::Lz4)
+            .max_memtable_size(8_000_000);
 
-        let partition = keyspace.open_partition("tags", opts)?;
-
-        partition.inner().set_max_memtable_size(8_000_000);
-        partition
-            .inner()
-            .set_compaction_strategy(Arc::new(SizeTiered::new(8_000_000)));
+        let partition = keyspace.open_partition(PARTITION_NAME, opts)?;
 
         Ok(Self { partition })
     }

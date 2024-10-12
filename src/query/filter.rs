@@ -5,17 +5,17 @@ use std::collections::VecDeque;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 // TODO: lifetime
-#[derive(Debug)]
-pub struct KvPair {
+#[derive(Debug, Eq, PartialEq)]
+pub struct Tag {
     pub key: String,
     pub value: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Node {
     And(Vec<Node>),
     Or(Vec<Node>),
-    Eq(KvPair),
+    Eq(Tag),
     AllStar,
 }
 
@@ -182,7 +182,7 @@ pub enum Item {
 }
 
 pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
-    if s == "*" {
+    if s.trim() == "*" {
         return Ok(Node::AllStar);
     }
 
@@ -255,7 +255,7 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
     for item in output_queue {
         match item {
             Item::Identifier((key, value)) => {
-                buf.push(Node::Eq(KvPair { key, value }));
+                buf.push(Node::Eq(Tag { key, value }));
             }
             Item::And => {
                 let b = buf.pop().unwrap();

@@ -1,7 +1,8 @@
 use crate::SeriesId;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use fjall::{PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
-use std::sync::Arc;
+use fjall::{CompressionType, PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
+
+const PARTITION_NAME: &str = "talna#tagidx";
 
 /// Inverted index, mapping key:value tag pairs to series IDs
 pub struct TagIndex {
@@ -10,23 +11,18 @@ pub struct TagIndex {
 
 impl TagIndex {
     pub fn new(keyspace: &TxKeyspace) -> fjall::Result<Self> {
-        use fjall::{compaction::SizeTiered, CompressionType};
-
         let opts = PartitionCreateOptions::default()
             .block_size(4_096)
-            .compression(CompressionType::Lz4);
+            .compression(CompressionType::Lz4)
+            .max_memtable_size(8_000_000);
 
-        let partition = keyspace.open_partition("tags", opts)?;
-
-        partition.inner().set_max_memtable_size(8_000_000);
-        partition
-            .inner()
-            .set_compaction_strategy(Arc::new(SizeTiered::new(8_000_000)));
+        let partition = keyspace.open_partition(PARTITION_NAME, opts)?;
 
         Ok(Self { partition })
     }
 
     // TODO: could probably use varint encoding + delta encoding here
+    // or even bitpacking for blocks of 128, and delta varint for remaining
     fn serialize_postings_list(postings: &[SeriesId]) -> Vec<u8> {
         let mut posting_list = vec![];
 

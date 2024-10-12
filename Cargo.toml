@@ -10,13 +10,15 @@ strip = "debuginfo"
 [dependencies]
 byteorder = "1.5.0"
 env_logger = "0.11.3"
-fjall = { path = "../fjall", default-features = false, features = [
+fjall = { version = "2", default-features = false, features = [
   "miniz",
   "lz4",
   "single_writer_tx",
 ] }
 log = "0.4.22"
 logos = "0.14.0"
+nom = "7.1.3"
+nom_locate = "4.2.0"
 rand = "0.8.5"
 regex = "1.10.5"
 self_cell = "1.0.4"

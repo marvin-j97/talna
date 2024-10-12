@@ -1,4 +1,4 @@
-use crate::SeriesId;
+use crate::{SeriesId, Value};
 use std::collections::BinaryHeap;
 
 #[derive(Debug)]
@@ -37,7 +37,7 @@ macro_rules! fail_iter {
 pub struct StreamItem {
     pub series_id: SeriesId,
     pub ts: u128,
-    pub value: f64,
+    pub value: Value,
 }
 
 pub struct Merger<I: Iterator<Item = fjall::Result<StreamItem>>> {

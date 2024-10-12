@@ -1,32 +1,62 @@
 use crate::{
     db::{Database, QueryStream},
     tag_sets::TagSets,
+    Value,
 };
 use std::{collections::HashMap, ops::Bound};
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Bucket {
-    start: u128,
-    value: f64,
+    end: u128,
+    value: Value,
     len: usize,
 }
 
 pub struct Aggregator<'a> {
+    /// The database to access
     pub(crate) database: &'a Database,
+
+    /// Name of metric to scan (e.g. `cpu_usage`)
     pub(crate) metric_name: &'a str,
+
+    /// Filter expression to filter out data points
     pub(crate) filter_expr: &'a str,
+
+    /// Group time series by tag (`host`)
     pub(crate) group_by: &'a str,
+
+    /// Bucket "width" in nano seconds
     pub(crate) bucket_width: u128,
+
+    /// Minimum timestamp to scan
+    pub(crate) min_ts: Option<u128>,
+
+    /// Maximum timestamp to scan
+    pub(crate) max_ts: Option<u128>,
 }
 
 impl<'a> Aggregator<'a> {
+    /// Bucket "width" in nano seconds
     pub fn bucket(mut self, bucket: u128) -> Self {
         self.bucket_width = bucket;
         self
     }
 
+    /// Sets the filter expression to filter out data points
+    ///
+    /// e.g. `env:prod AND service:db`
     pub fn filter(mut self, filter_expr: &'a str) -> Self {
         self.filter_expr = filter_expr;
+        self
+    }
+
+    pub fn start(mut self, ts: u128) -> Self {
+        self.min_ts = Some(ts);
+        self
+    }
+
+    pub fn end(mut self, ts: u128) -> Self {
+        self.max_ts = Some(ts);
         self
     }
 
@@ -36,7 +66,16 @@ impl<'a> Aggregator<'a> {
             self.database.start_query(
                 self.metric_name,
                 self.filter_expr,
-                (Bound::Unbounded, Bound::Unbounded), // TODO: bounds
+                (
+                    match self.min_ts {
+                        Some(ts) => Bound::Included(ts),
+                        None => Bound::Unbounded,
+                    },
+                    match self.max_ts {
+                        Some(ts) => Bound::Included(ts),
+                        None => Bound::Unbounded,
+                    },
+                ),
             )?,
             self.group_by,
             self.bucket_width,
@@ -52,7 +91,7 @@ impl<'a> Aggregator<'a> {
         let tagsets = stream
             .affected_series
             .iter()
-            .map(|x| Ok((*x, tag_sets.get(*x)?)))
+            .map(|&x| Ok((x, tag_sets.get(x)?)))
             .collect::<fjall::Result<HashMap<_, _>>>()?;
 
         let mut result: HashMap<String, Vec<Bucket>> = HashMap::new();
@@ -73,14 +112,14 @@ impl<'a> Aggregator<'a> {
                     // NOTE: Cannot be empty
                     let last = buckets.last_mut().unwrap();
 
-                    if (last.start - data_point.ts) < bucket_width {
+                    if (last.end - data_point.ts) < bucket_width {
                         // Add to bucket
                         last.len += 1;
                         last.value += data_point.value;
                     } else {
                         // Insert next bucket
                         buckets.push(Bucket {
-                            start: data_point.ts,
+                            end: data_point.ts,
                             len: 1,
                             value: data_point.value,
                         });
@@ -88,17 +127,20 @@ impl<'a> Aggregator<'a> {
                 })
                 .or_insert_with(|| {
                     vec![Bucket {
-                        start: data_point.ts,
+                        end: data_point.ts,
                         len: 1,
                         value: data_point.value,
                     }]
                 });
         }
 
+        // TODO: can probably have the bucketing process be another struct
+        // and the aggregation just an configuration option (AVG, MAX, MIN, MEDIAN, etc)
+
         for buckets in result.values_mut() {
             for bucket in buckets {
                 // NOTE: Do AVG
-                bucket.value /= bucket.len as f64;
+                bucket.value /= bucket.len as Value;
             }
         }
 
