@@ -50,6 +50,7 @@ fn main() -> fjall::Result<()> {
         }
     }
 
+    // TODO: allow host:[h-1, h-2]
     let filter_expr = "env:prod AND service:db AND (host:h-1 OR host:h-2)";
 
     for _ in 0..5 {

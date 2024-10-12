@@ -1,17 +1,29 @@
 [package]
 name = "talna"
+description = "Simple, embeddable time series database"
+license = "MIT OR Apache-2.0"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.74"
+authors = ["marvin-j97"]
+keywords = ["database", "lsmt", "lsm", "time series", "timeseries"]
+categories = ["data-structures", "database-implementations", "algorithms"]
+repository = "https://github.com/marvin-j97/talna"
+homepage = "https://github.com/marvin-j97/talna"
+readme = "README.md"
+include = ["src/**/*", "LICENSE-APACHE", "LICENSE-MIT", "README.md"]
 
-[profile.release]
-strip = "debuginfo"
-# lto = true
+[lib]
+name = "talna"
+path = "src/lib.rs"
+
+[features]
+default = []
 
 [dependencies]
 byteorder = "1.5.0"
 env_logger = "0.11.3"
 fjall = { version = "2", default-features = false, features = [
-  "miniz",
   "lz4",
   "single_writer_tx",
 ] }
@@ -23,3 +35,11 @@ rand = "0.8.5"
 regex = "1.10.5"
 self_cell = "1.0.4"
 test-log = "0.2.16"
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
+tempfile = "3.12.0"
+test-log = "0.2.16"
+
+[package.metadata.cargo-all-features]
+denylist = ["all"]
