@@ -4,22 +4,21 @@ use crate::{tag_index::TagIndex, SeriesId};
 use std::collections::VecDeque;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
-// TODO: lifetime
 #[derive(Debug, Eq, PartialEq)]
-pub struct Tag {
-    pub key: String,
-    pub value: String,
+pub struct Tag<'a> {
+    pub key: &'a str,
+    pub value: &'a str,
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum Node {
-    And(Vec<Node>),
-    Or(Vec<Node>),
-    Eq(Tag),
+pub enum Node<'a> {
+    And(Vec<Self>),
+    Or(Vec<Self>),
+    Eq(Tag<'a>),
     AllStar,
 }
 
-impl std::fmt::Display for Node {
+impl<'a> std::fmt::Display for Node<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Node::Eq(leaf) => write!(f, "{}:{}", leaf.key, leaf.value),
@@ -136,7 +135,8 @@ pub fn union(vecs: &[Vec<u64>]) -> Vec<u64> {
     result
 }
 
-impl Node {
+impl<'a> Node<'a> {
+    // TODO: unit test and add benchmark case
     pub fn evaluate(
         &self,
         smap: &SeriesMapping,
@@ -170,11 +170,9 @@ impl Node {
     }
 }
 
-// TODO: NOT
-
 #[derive(Debug)]
-pub enum Item {
-    Identifier((String, String)),
+pub enum Item<'a> {
+    Identifier((&'a str, &'a str)),
     And,
     Or,
     ParanOpen,
@@ -195,8 +193,8 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
         match tok {
             lexer::Token::Identifier(id) => {
                 let mut splits = id.split(':');
-                let k = splits.next().unwrap().to_owned();
-                let v = splits.next().unwrap().to_owned();
+                let k = splits.next().unwrap();
+                let v = splits.next().unwrap();
                 output_queue.push_back(Item::Identifier((k, v)));
             }
             lexer::Token::And => {

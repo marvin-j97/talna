@@ -12,24 +12,24 @@ use nom_locate::position;
 use span::{Parse, ParseResult, Position, RawSpan};
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum TagValue {
-    Identifier(String),
-    Set(Vec<String>),
+pub enum TagValue<'a> {
+    Identifier(&'a str),
+    Set(Vec<&'a str>),
 }
 
-impl TagValue {
-    pub fn parse_identifier_raw(input: RawSpan<'_>) -> ParseResult<'_, &str> {
+impl<'a> TagValue<'a> {
+    pub fn parse_identifier_raw(input: RawSpan<'a>) -> ParseResult<'a, &str> {
         let (input, value) =
             take_while(|x: char| x.is_alphanumeric() || x == '_' || x == '-')(input)?;
         Ok((input, value.fragment()))
     }
 
-    pub fn parse_identifier(input: RawSpan<'_>) -> ParseResult<'_, Self> {
+    pub fn parse_identifier(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         let (input, value) = Self::parse_identifier_raw(input)?;
-        Ok((input, TagValue::Identifier(value.to_string())))
+        Ok((input, TagValue::Identifier(value)))
     }
 
-    pub fn parse_set(input: RawSpan<'_>) -> ParseResult<'_, Self> {
+    pub fn parse_set(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         let (input, _) = tag("[")(input)?;
 
         let (input, values) = separated_list1(
@@ -39,13 +39,13 @@ impl TagValue {
 
         let (input, _) = tag("]")(input)?;
 
-        let values = values.into_iter().map(|x| x.to_string()).collect();
+        let values = values.into_iter().collect();
 
         Ok((input, TagValue::Set(values)))
     }
 }
 
-impl<'a> Parse<'a> for TagValue {
+impl<'a> Parse<'a> for TagValue<'a> {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         let (input, result) = alt((Self::parse_set, Self::parse_identifier))(input)?;
         Ok((input, result))
@@ -53,24 +53,24 @@ impl<'a> Parse<'a> for TagValue {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct ParsedTag {
-    pub key: String,
-    pub value: TagValue,
+pub struct ParsedTag<'a> {
+    pub key: &'a str,
+    pub value: TagValue<'a>,
     position: Position,
 }
 
-impl Into<Node> for ParsedTag {
-    fn into(self) -> Node {
-        match self.value {
+impl<'a> From<ParsedTag<'a>> for Node<'a> {
+    fn from(val: ParsedTag<'a>) -> Self {
+        match val.value {
             TagValue::Identifier(value) => Node::Eq(Tag {
-                key: self.key,
+                key: val.key,
                 value,
             }),
             TagValue::Set(vs) => Node::Or(
                 vs.into_iter()
                     .map(|value| {
                         Node::Eq(Tag {
-                            key: self.key.clone(),
+                            key: val.key,
                             value,
                         })
                     })
@@ -80,7 +80,7 @@ impl Into<Node> for ParsedTag {
     }
 }
 
-impl<'a> Parse<'a> for ParsedTag {
+impl<'a> Parse<'a> for ParsedTag<'a> {
     fn parse(input: RawSpan<'a>) -> ParseResult<'a, Self> {
         let (input, pos) = position(input)?;
 
@@ -91,7 +91,7 @@ impl<'a> Parse<'a> for ParsedTag {
         Ok((
             input,
             Self {
-                key: key.fragment().to_string(),
+                key: key.fragment(),
                 value,
                 position: pos.into(),
             },
@@ -112,8 +112,8 @@ mod tests {
 
         assert_eq!(
             ParsedTag {
-                key: "host".into(),
-                value: TagValue::Identifier("a1".into()),
+                key: "host",
+                value: TagValue::Identifier("a1"),
                 position: Position { offset: 1, line: 1 }
             },
             tag
@@ -128,8 +128,8 @@ mod tests {
 
         assert_eq!(
             ParsedTag {
-                key: "host_name".into(),
-                value: TagValue::Identifier("t-128".into()),
+                key: "host_name",
+                value: TagValue::Identifier("t-128"),
                 position: Position { offset: 1, line: 1 }
             },
             tag
@@ -144,8 +144,8 @@ mod tests {
 
         assert_eq!(
             ParsedTag {
-                key: "host".into(),
-                value: TagValue::Set(vec!["a1".into(), "a2".into(), "a3".into()]),
+                key: "host",
+                value: TagValue::Set(vec!["a1", "a2", "a3"]),
                 position: Position { offset: 1, line: 1 }
             },
             tag
@@ -160,8 +160,8 @@ mod tests {
 
         assert_eq!(
             ParsedTag {
-                key: "host".into(),
-                value: TagValue::Set(vec!["a1".into(), "a2".into(), "a3".into()]),
+                key: "host",
+                value: TagValue::Set(vec!["a1", "a2", "a3"]),
                 position: Position { offset: 1, line: 1 }
             },
             tag
@@ -176,8 +176,8 @@ mod tests {
 
         assert_eq!(
             ParsedTag {
-                key: "host".into(),
-                value: TagValue::Set(vec!["a1".into(), "a2".into(), "a3".into()]),
+                key: "host",
+                value: TagValue::Set(vec!["a1", "a2", "a3"]),
                 position: Position { offset: 1, line: 1 }
             },
             tag
@@ -192,8 +192,8 @@ mod tests {
 
         assert_eq!(
             Node::Eq(Tag {
-                key: "host".into(),
-                value: "a1".into()
+                key: "host",
+                value: "a1",
             }),
             tag.into(),
         )
@@ -208,16 +208,16 @@ mod tests {
         assert_eq!(
             Node::Or(vec![
                 Node::Eq(Tag {
-                    key: "host".into(),
-                    value: "a1".into()
+                    key: "host",
+                    value: "a1",
                 }),
                 Node::Eq(Tag {
-                    key: "host".into(),
-                    value: "a2".into()
+                    key: "host",
+                    value: "a2",
                 }),
                 Node::Eq(Tag {
-                    key: "host".into(),
-                    value: "a3".into()
+                    key: "host",
+                    value: "a3",
                 }),
             ]),
             tag.into(),
