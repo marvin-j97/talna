@@ -3,7 +3,7 @@ use crate::{
     tag_sets::TagSets,
     Value,
 };
-use std::{collections::HashMap, ops::Bound};
+use std::ops::Bound;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Bucket {
@@ -25,7 +25,7 @@ pub struct Aggregator<'a> {
     /// Group time series by tag (`host`)
     pub(crate) group_by: &'a str,
 
-    /// Bucket "width" in nano seconds
+    /// Bucket "width" in nanoseconds
     pub(crate) bucket_width: u128,
 
     /// Minimum timestamp to scan
@@ -36,7 +36,7 @@ pub struct Aggregator<'a> {
 }
 
 impl<'a> Aggregator<'a> {
-    /// Bucket "width" in nano seconds
+    /// Bucket "width" in nanoseconds
     pub fn bucket(mut self, bucket: u128) -> Self {
         self.bucket_width = bucket;
         self
@@ -60,7 +60,7 @@ impl<'a> Aggregator<'a> {
         self
     }
 
-    pub fn run(self) -> fjall::Result<HashMap<String, Vec<Bucket>>> {
+    pub fn run(self) -> fjall::Result<crate::HashMap<String, Vec<Bucket>>> {
         Self::raw(
             &self.database.tag_sets,
             self.database.start_query(
@@ -87,14 +87,14 @@ impl<'a> Aggregator<'a> {
         stream: QueryStream,
         group_by: &str,
         bucket_width: u128,
-    ) -> fjall::Result<HashMap<String, Vec<Bucket>>> {
+    ) -> fjall::Result<crate::HashMap<String, Vec<Bucket>>> {
         let tagsets = stream
             .affected_series
             .iter()
             .map(|&x| Ok((x, tag_sets.get(x)?)))
-            .collect::<fjall::Result<HashMap<_, _>>>()?;
+            .collect::<fjall::Result<crate::HashMap<_, _>>>()?;
 
-        let mut result: HashMap<String, Vec<Bucket>> = HashMap::new();
+        let mut result: crate::HashMap<String, Vec<Bucket>> = crate::HashMap::default();
 
         for data_point in stream.reader {
             let data_point = data_point?;

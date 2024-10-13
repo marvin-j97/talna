@@ -18,26 +18,28 @@ pub enum TagValue {
 }
 
 impl TagValue {
-    pub fn parse_identifier(input: RawSpan<'_>) -> ParseResult<'_, Self> {
+    pub fn parse_identifier_raw(input: RawSpan<'_>) -> ParseResult<'_, &str> {
         let (input, value) =
             take_while(|x: char| x.is_alphanumeric() || x == '_' || x == '-')(input)?;
-        Ok((input, TagValue::Identifier(value.fragment().to_string())))
+        Ok((input, value.fragment()))
+    }
+
+    pub fn parse_identifier(input: RawSpan<'_>) -> ParseResult<'_, Self> {
+        let (input, value) = Self::parse_identifier_raw(input)?;
+        Ok((input, TagValue::Identifier(value.to_string())))
     }
 
     pub fn parse_set(input: RawSpan<'_>) -> ParseResult<'_, Self> {
-        let (input, _) = tag("(")(input)?;
+        let (input, _) = tag("[")(input)?;
 
         let (input, values) = separated_list1(
             delimited(space0, tag(","), space0),
-            take_while(|x: char| x.is_alphanumeric() || x == '_' || x == '-'),
+            Self::parse_identifier_raw,
         )(input)?;
 
-        let (input, _) = tag(")")(input)?;
+        let (input, _) = tag("]")(input)?;
 
-        let values = values
-            .into_iter()
-            .map(|x| x.fragment().to_string())
-            .collect();
+        let values = values.into_iter().map(|x| x.to_string()).collect();
 
         Ok((input, TagValue::Set(values)))
     }
@@ -136,7 +138,7 @@ mod tests {
 
     #[test]
     fn parse_tag_set() {
-        let str = "host:(a1, a2, a3)";
+        let str = "host:[a1, a2, a3]";
 
         let (_, tag) = ParsedTag::parse_from_raw(str).unwrap();
 
@@ -152,7 +154,7 @@ mod tests {
 
     #[test]
     fn parse_tag_set_2() {
-        let str = "host:(a1  ,a2,a3)";
+        let str = "host:[a1  ,a2,a3]";
 
         let (_, tag) = ParsedTag::parse_from_raw(str).unwrap();
 
@@ -168,7 +170,7 @@ mod tests {
 
     #[test]
     fn parse_tag_set_3() {
-        let str = "host:(a1  ,a2  ,           a3)";
+        let str = "host:[a1  ,a2  ,           a3]";
 
         let (_, tag) = ParsedTag::parse_from_raw(str).unwrap();
 
@@ -199,7 +201,7 @@ mod tests {
 
     #[test]
     fn parse_tag_set_to_filter_node() {
-        let str = "host:(a1 , a2 , a3)";
+        let str = "host:[a1 , a2 , a3]";
 
         let (_, tag) = ParsedTag::parse_from_raw(str).unwrap();
 

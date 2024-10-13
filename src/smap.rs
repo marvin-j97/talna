@@ -6,7 +6,7 @@ use std::collections::HashSet;
 const PARTITION_NAME: &str = "talna#smap";
 
 pub struct SeriesMapping {
-    partition: TxPartition,
+    pub(crate) partition: TxPartition,
 }
 
 impl SeriesMapping {

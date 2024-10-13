@@ -69,22 +69,19 @@ impl Database {
         format!("talna#s#{series_id}")
     }
 
-    pub(crate) fn join_tags(tags: &[(String, String)]) -> String {
-        // Sort tags
+    #[doc(hidden)]
+    pub fn join_tags(tags: &[(String, String)]) -> String {
         let mut tags = tags.iter().collect::<Vec<_>>();
         tags.sort();
 
-        // Precompute the total length of the resulting string to avoid multiple reallocations.
-        let total_len: usize = tags
+        let total_len = tags
             .iter()
             .map(|(key, value)| key.len() + value.len() + 1) // +1 for the ':' between key and value
             .sum::<usize>()
             + tags.len().saturating_sub(1); // Add space for the semicolons
 
-        // Preallocate memory for the resulting string
         let mut result = String::with_capacity(total_len);
 
-        // Join the tags into the result string
         for (idx, (key, value)) in tags.iter().enumerate() {
             if idx > 0 {
                 result.push(';');
@@ -224,61 +221,82 @@ impl Database {
         let series_id = self.smap.get(&series_key)?;
 
         let series = if let Some(series_id) = series_id {
+            // NOTE: Series already exists (happy path)
+
             self.series
                 .read()
                 .expect("lock is poisoned")
                 .get(&series_id)
                 .cloned()
+                .unwrap()
         } else {
-            None
-        };
+            // NOTE: Create series
+            //
+            // We need to run in a transaction (for serializability)
+            //
+            // Because we cannot rely on the series not being created since the
+            // start of the function, we need to again look it up inside the transaction
+            // to really make sure
 
-        // TODO: if the series is not found here, but then created, we create 2, if concurrent writes happen to same series
-
-        let series = if let Some(series) = series {
-            series
-        } else {
             let mut tx = self.keyspace.write_tx();
 
-            let mut series_lock = self.series.write().expect("lock is poisoned");
-            let next_series_id = series_lock.keys().max().map(|x| x + 1).unwrap_or_default();
+            let series_id = tx.get(&self.smap.partition, &series_key)?.map(|bytes| {
+                let mut reader = &bytes[..];
+                reader.read_u64::<BigEndian>().expect("should deserialize")
+            });
 
-            log::trace!("creating series {next_series_id} for permutation {series_key:?}");
+            if let Some(series_id) = series_id {
+                // NOTE: Series was created since the start of the function
 
-            let partition = self.keyspace.open_partition(
-                &Self::get_series_name(next_series_id),
-                PartitionCreateOptions::default()
-                    .block_size(64_000)
-                    .compression(fjall::CompressionType::Lz4),
-            )?;
+                self.series
+                    .read()
+                    .expect("lock is poisoned")
+                    .get(&series_id)
+                    .cloned()
+                    .unwrap()
+            } else {
+                // NOTE: Actually create series
 
-            series_lock.insert(
-                next_series_id,
+                let mut series_lock = self.series.write().expect("lock is poisoned");
+                let next_series_id = series_lock.keys().max().map(|x| x + 1).unwrap_or_default();
+
+                log::trace!("Creating series {next_series_id} for permutation {series_key:?}");
+
+                let partition = self.keyspace.open_partition(
+                    &Self::get_series_name(next_series_id),
+                    PartitionCreateOptions::default()
+                        .block_size(64_000)
+                        .compression(fjall::CompressionType::Lz4),
+                )?;
+
+                series_lock.insert(
+                    next_series_id,
+                    Series {
+                        id: next_series_id,
+                        inner: partition.inner().clone(),
+                    },
+                );
+
+                drop(series_lock);
+
+                self.smap.insert(&mut tx, &series_key, next_series_id);
+
+                self.tag_index.index(&mut tx, metric, next_series_id)?;
+                for (key, value) in tags {
+                    let term = format!("{metric}#{key}:{value}");
+                    self.tag_index.index(&mut tx, &term, next_series_id)?;
+                }
+
+                self.tag_sets
+                    .insert(&mut tx, next_series_id, &Self::join_tags(tags));
+
+                tx.commit()?;
+
+                // NOTE: Get inner because we don't want to insert and read series data in a transactional context
                 Series {
                     id: next_series_id,
                     inner: partition.inner().clone(),
-                },
-            );
-
-            drop(series_lock);
-
-            self.smap.insert(&mut tx, &series_key, next_series_id);
-
-            self.tag_index.index(&mut tx, metric, next_series_id)?;
-            for (key, value) in tags {
-                let term = format!("{metric}#{key}:{value}");
-                self.tag_index.index(&mut tx, &term, next_series_id)?;
-            }
-
-            self.tag_sets
-                .insert(&mut tx, next_series_id, &Self::join_tags(tags));
-
-            tx.commit()?;
-
-            // NOTE: Get inner because we don't want to insert and read series data in a transactional context
-            Series {
-                id: next_series_id,
-                inner: partition.inner().clone(),
+                }
             }
         };
 

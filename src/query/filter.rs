@@ -46,7 +46,7 @@ impl std::fmt::Display for Node {
     }
 }
 
-fn intersection(vecs: Vec<Vec<u64>>) -> Vec<u64> {
+pub fn intersection(vecs: &[Vec<u64>]) -> Vec<u64> {
     if vecs.is_empty() {
         return vec![];
     }
@@ -100,7 +100,7 @@ fn intersection(vecs: Vec<Vec<u64>>) -> Vec<u64> {
     result
 }
 
-fn union(vecs: Vec<Vec<u64>>) -> Vec<u64> {
+pub fn union(vecs: &[Vec<u64>]) -> Vec<u64> {
     if vecs.is_empty() {
         return vec![];
     }
@@ -156,7 +156,7 @@ impl Node {
                     .map(|c| Self::evaluate(c, smap, tag_index, metric_name))
                     .collect::<fjall::Result<Vec<_>>>()?;
 
-                Ok(intersection(ids))
+                Ok(intersection(&ids))
             }
             Node::Or(children) => {
                 let ids = children
@@ -164,7 +164,7 @@ impl Node {
                     .map(|c| Self::evaluate(c, smap, tag_index, metric_name))
                     .collect::<fjall::Result<Vec<_>>>()?;
 
-                Ok(union(ids))
+                Ok(union(&ids))
             }
         }
     }
@@ -275,4 +275,25 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
     debug_assert_eq!(1, buf.len());
 
     Ok(buf.pop().unwrap())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test_log::test]
+    fn test_intersection() {
+        assert_eq!(
+            [1, 3],
+            *intersection(&[vec![1, 2, 3, 4, 5], vec![1, 3, 5], vec![1, 3]]),
+        );
+    }
+
+    #[test_log::test]
+    fn test_union() {
+        assert_eq!(
+            [1, 2, 4, 8],
+            *union(&[vec![1, 8], vec![1, 2], vec![1, 2, 4], vec![2, 4, 8]]),
+        );
+    }
 }

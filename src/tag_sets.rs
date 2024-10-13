@@ -1,6 +1,5 @@
 use crate::SeriesId;
 use fjall::{CompressionType, PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
-use std::collections::HashMap;
 
 const PARTITION_NAME: &str = "talna#tags";
 
@@ -26,7 +25,7 @@ impl TagSets {
         tx.insert(&self.partition, series_id.to_be_bytes(), tags);
     }
 
-    pub fn get(&self, series_id: SeriesId) -> fjall::Result<HashMap<String, String>> {
+    pub fn get(&self, series_id: SeriesId) -> fjall::Result<crate::HashMap<String, String>> {
         Ok(self
             .partition
             .get(series_id.to_be_bytes())?
@@ -38,7 +37,7 @@ impl TagSets {
     }
 }
 
-fn parse_key_value_pairs(input: &str) -> HashMap<String, String> {
+fn parse_key_value_pairs(input: &str) -> crate::HashMap<String, String> {
     input
         .split(';')
         .map(|pair| {
