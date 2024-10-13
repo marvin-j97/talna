@@ -19,6 +19,7 @@ path = "src/lib.rs"
 
 [features]
 default = []
+high_precision = []
 
 [dependencies]
 byteorder = "1.5.0"

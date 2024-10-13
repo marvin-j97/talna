@@ -53,7 +53,11 @@ type HashMap<K, V> = std::collections::HashMap<K, V, rustc_hash::FxBuildHasher>;
 
 pub use db::{Database, TagSet};
 
+#[cfg(feature = "high_precision")]
 pub type Value = f64;
+
+#[cfg(not(feature = "high_precision"))]
+pub type Value = f32;
 
 // TODO: custom error
 pub type Error = fjall::Error;

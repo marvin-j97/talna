@@ -128,7 +128,12 @@ impl Database {
                         let ts = k.read_u128::<BigEndian>()?;
 
                         let mut v = Cursor::new(v);
+
+                        #[cfg(feature = "high_precision")]
                         let value = v.read_f64::<BigEndian>()?;
+
+                        #[cfg(not(feature = "high_precision"))]
+                        let value = v.read_f32::<BigEndian>()?;
 
                         Ok(StreamItem {
                             series_id: series.id,
