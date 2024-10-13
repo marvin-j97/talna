@@ -1,16 +1,10 @@
+use super::Bucket;
 use crate::{
     db::{Database, QueryStream},
     tag_sets::TagSets,
     Value,
 };
 use std::ops::Bound;
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Bucket {
-    end: u128,
-    value: Value,
-    len: usize,
-}
 
 pub struct Aggregator<'a> {
     /// The database to access
@@ -143,6 +137,10 @@ impl<'a> Aggregator<'a> {
                 bucket.value /= bucket.len as Value;
             }
         }
+
+        // TODO: should probably just return bucket through .next()
+        // Iterator
+        // the above should become a Builder
 
         Ok(result)
     }
