@@ -50,7 +50,10 @@ fn main() -> fjall::Result<()> {
         }
     }
 
-    // TODO: allow host:[h-1, h-2]
+    // TODO: allow tag sets (OR conjunction): host:[h-1, h-2]
+    // TODO: allow negative query, e.g. -env:prod
+    // TODO: wildcard, e.g. service:web.*, service:*-canary, region: *west*
+
     let filter_expr = "env:prod AND service:db AND (host:h-1 OR host:h-2)";
 
     for _ in 0..5 {
