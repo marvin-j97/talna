@@ -90,6 +90,11 @@ impl<'a> Aggregator<'a> {
 
         let mut result: crate::HashMap<String, Vec<Bucket>> = crate::HashMap::default();
 
+        // TODO: we probably don't need to actually merge the streams
+        // TODO: just iterate each stream itself
+        // TODO: probably a bit faster, because we don't need to lookup the
+        // TODO: the tagset/group for each data point, just for each stream once!!!
+
         for data_point in stream.reader {
             let data_point = data_point?;
 

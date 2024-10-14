@@ -62,7 +62,7 @@ fn insert_timestamp(c: &mut Criterion) {
         let mut ts = 0;
 
         b.iter(|| {
-            db.write("cpu", ts, 52.74, tags).unwrap();
+            db.write_at("cpu", ts, 52.74, tags).unwrap();
             ts += 1;
         });
     });
@@ -79,11 +79,11 @@ fn avg(c: &mut Criterion) {
         let dir = tempfile::tempdir().unwrap();
         let db = talna::Database::new(&dir, 64).unwrap();
 
-        db.write("cpu", 0, 10.0, tags).unwrap();
-        db.write("cpu", 1, 11.0, tags).unwrap();
-        db.write("cpu", 2, 12.0, tags).unwrap();
-        db.write("cpu", 3, 13.0, tags).unwrap();
-        db.write("cpu", 4, 14.0, tags).unwrap();
+        db.write("cpu", 10.0, tags).unwrap();
+        db.write("cpu", 11.0, tags).unwrap();
+        db.write("cpu", 12.0, tags).unwrap();
+        db.write("cpu", 13.0, tags).unwrap();
+        db.write("cpu", 14.0, tags).unwrap();
 
         b.iter(|| {
             db.avg("cpu", "host")

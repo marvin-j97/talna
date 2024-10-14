@@ -3,6 +3,7 @@ use crate::query::filter::parse_filter_query;
 use crate::smap::SeriesMapping;
 use crate::tag_index::TagIndex;
 use crate::tag_sets::TagSets;
+use crate::time::timestamp;
 use crate::Value;
 use crate::{merge::Merger, SeriesId};
 use byteorder::{BigEndian, ReadBytesExt};
@@ -56,9 +57,36 @@ impl Database {
         let tag_sets = TagSets::new(&keyspace)?;
         let series_mapping = SeriesMapping::new(&keyspace)?;
 
+        let mut series_map = BTreeMap::new();
+
+        // NOTE: Recover in-memory series map
+        for kv in series_mapping.partition.inner().iter() {
+            let (_, bytes) = kv?;
+
+            let series_id = {
+                let mut reader = &bytes[..];
+                reader.read_u64::<BigEndian>()?
+            };
+
+            let series = Series {
+                id: series_id,
+                inner: keyspace
+                    .open_partition(
+                        &Self::get_series_name(series_id),
+                        PartitionCreateOptions::default()
+                            .block_size(64_000)
+                            .compression(fjall::CompressionType::Lz4),
+                    )?
+                    .inner()
+                    .clone(),
+            };
+
+            series_map.insert(series_id, series);
+        }
+
         Ok(Self {
             keyspace,
-            series: RwLock::default(), // TODO: recover series s#
+            series: RwLock::new(series_map),
             smap: series_mapping,
             tag_index,
             tag_sets,
@@ -211,7 +239,18 @@ impl Database {
             .map(|stream| reader))
     } */
 
-    pub fn write(&self, metric: &str, ts: u128, value: Value, tags: &TagSet) -> fjall::Result<()> {
+    pub fn write(&self, metric: &str, value: Value, tags: &TagSet) -> fjall::Result<()> {
+        self.write_at(metric, timestamp(), value, tags)
+    }
+
+    #[doc(hidden)]
+    pub fn write_at(
+        &self,
+        metric: &str,
+        ts: u128,
+        value: Value,
+        tags: &TagSet,
+    ) -> fjall::Result<()> {
         if !metric.chars().all(|c| METRICS_NAME_CHARS.contains(c)) {
             panic!("oops");
         }
