@@ -11,7 +11,7 @@ use std::io::Cursor;
 use std::sync::Arc;
 use std::{collections::BTreeMap, ops::Bound, path::Path, sync::RwLock};
 
-pub type TagSet = Vec<(String, String)>;
+pub type TagSet<'a> = [(&'a str, &'a str)];
 
 const METRICS_NAME_CHARS: &str = "abcdefghijklmnopqrstuvwxyz_.";
 
@@ -70,7 +70,7 @@ impl Database {
     }
 
     #[doc(hidden)]
-    pub fn join_tags(tags: &[(String, String)]) -> String {
+    pub fn join_tags(tags: &TagSet) -> String {
         let mut tags = tags.iter().collect::<Vec<_>>();
         tags.sort();
 
@@ -94,7 +94,7 @@ impl Database {
         result
     }
 
-    pub(crate) fn create_series_key(metric: &str, tags: &[(String, String)]) -> String {
+    pub(crate) fn create_series_key(metric: &str, tags: &TagSet) -> String {
         let joined_tags = Self::join_tags(tags);
         format!("{metric}#{joined_tags}")
     }
@@ -211,13 +211,7 @@ impl Database {
             .map(|stream| reader))
     } */
 
-    pub fn write(
-        &self,
-        metric: &str,
-        ts: u128,
-        value: Value,
-        tags: &[(String, String)],
-    ) -> fjall::Result<()> {
+    pub fn write(&self, metric: &str, ts: u128, value: Value, tags: &TagSet) -> fjall::Result<()> {
         if !metric.chars().all(|c| METRICS_NAME_CHARS.contains(c)) {
             panic!("oops");
         }
