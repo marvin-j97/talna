@@ -35,13 +35,8 @@ pub struct StreamItem {
 }
 
 pub struct SeriesStream {
-    pub(crate) id: SeriesId,
+    pub(crate) series_id: SeriesId,
     pub(crate) tags: crate::HashMap<String, String>,
-    pub(crate) reader: Box<dyn Iterator<Item = fjall::Result<StreamItem>>>,
-}
-
-pub struct QueryStream {
-    pub(crate) affected_series: Vec<SeriesId>,
     pub(crate) reader: Box<dyn Iterator<Item = fjall::Result<StreamItem>>>,
 }
 
@@ -165,7 +160,7 @@ impl Database {
                 let tags = self.tag_sets.get(series.id)?;
 
                 Ok(SeriesStream {
-                    id: series.id,
+                    series_id: series.id,
                     tags,
                     reader: Box::new(series.inner.range(range).map(move |x| match x {
                         Ok((k, v)) => {
