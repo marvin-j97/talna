@@ -15,6 +15,7 @@ pub enum Node<'a> {
     And(Vec<Self>),
     Or(Vec<Self>),
     Eq(Tag<'a>),
+    Not(Box<Self>),
     AllStar,
 }
 
@@ -41,6 +42,7 @@ impl<'a> std::fmt::Display for Node<'a> {
                     .join(" OR ")
             ),
             Node::AllStar => write!(f, "*"),
+            Node::Not(node) => write!(f, "!({node})",),
         }
     }
 }
@@ -143,6 +145,18 @@ impl<'a> Node<'a> {
 
                 Ok(union(&ids))
             }
+            Node::Not(node) => {
+                let mut ids = smap.list_all()?;
+
+                for id in node.evaluate(smap, tag_index, metric_name)? {
+                    ids.remove(&id);
+                }
+
+                let mut ids = ids.into_iter().collect::<Vec<_>>();
+                ids.sort();
+
+                Ok(ids)
+            }
         }
     }
 }
@@ -152,6 +166,7 @@ pub enum Item<'a> {
     Identifier((&'a str, &'a str)),
     And,
     Or,
+    Not,
     ParanOpen,
     ParanClose,
 }
@@ -175,6 +190,18 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
                 output_queue.push_back(Item::Identifier((k, v)));
             }
             lexer::Token::And => {
+                loop {
+                    let Some(top) = op_stack.back() else {
+                        break;
+                    };
+
+                    // And has higher precedence than Or but lower than Not
+                    if matches!(top, Item::And | Item::Not) {
+                        output_queue.push_back(op_stack.pop_back().unwrap());
+                    } else {
+                        break;
+                    }
+                }
                 op_stack.push_back(Item::And);
             }
             lexer::Token::Or => {
@@ -182,7 +209,9 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
                     let Some(top) = op_stack.back() else {
                         break;
                     };
-                    if matches!(top, Item::And) {
+
+                    // Or has lower precedence, so we pop And and Not operators
+                    if matches!(top, Item::And | Item::Not) {
                         output_queue.push_back(op_stack.pop_back().unwrap());
                     } else {
                         break;
@@ -190,6 +219,9 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
                 }
 
                 op_stack.push_back(Item::Or);
+            }
+            lexer::Token::Not => {
+                op_stack.push_back(Item::Not);
             }
             lexer::Token::ParanOpen => {
                 op_stack.push_back(Item::ParanOpen);
@@ -199,18 +231,18 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
                     let Some(top) = op_stack.back() else {
                         break;
                     };
+
                     if matches!(top, Item::ParanOpen) {
                         break;
                     }
-                    let top = op_stack.pop_back().unwrap();
-                    if op_stack.is_empty() {
-                        return Err(());
-                    }
-                    output_queue.push_back(top);
+
+                    output_queue.push_back(op_stack.pop_back().unwrap());
                 }
+
                 let Some(top) = op_stack.pop_back() else {
                     return Err(());
                 };
+
                 if !matches!(top, Item::ParanOpen) {
                     return Err(());
                 }
@@ -241,6 +273,10 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
                 let b = buf.pop().unwrap();
                 let a = buf.pop().unwrap();
                 buf.push(Node::Or(vec![a, b]));
+            }
+            Item::Not => {
+                let a = buf.pop().unwrap();
+                buf.push(Node::Not(Box::new(a)));
             }
             Item::ParanOpen => return Err(()),
             Item::ParanClose => return Err(()),
