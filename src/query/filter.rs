@@ -124,7 +124,7 @@ impl<'a> Node<'a> {
             Node::AllStar => Ok(smap.list_all()?.into_iter().collect()),
             Node::Eq(leaf) => {
                 let term = format!("{metric_name}#{}:{}", leaf.key, leaf.value);
-                tag_index.query(&term)
+                tag_index.query_eq(&term)
             }
             Node::And(children) => {
                 // TODO: evaluate lazily...
