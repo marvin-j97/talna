@@ -1,7 +1,7 @@
 //! A simple, embeddable time series database
 //!
 //! It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine,
-//! being able to ingest ~700k million data points per seconds.
+//! being able to ingest ~700k data points per seconds.
 //!
 //! The LSM-based storage engine causes no degradation in write ingestion speed, even for large datasets,
 //! has low write amplification (good for SSDs) and compresses the on-disk data (again, good for SSDs).
@@ -14,7 +14,7 @@
 //!
 //! - ingested in 1374s (~727k inserts per second)
 //! - average memory usage: 100 MB , peak: ~170 MB
-//! - query latency for 1 million data points (`AVG | env:prod AND service:db AND (host:h-1 OR host:h-2 OR host:h-3)`): 150ms
+//! - query latency for 1 million data points (`AVG | env:prod AND service:db AND (host:h-1 OR host:h-2 OR host:h-3)`): 110ms
 //! - disk space: 12 GB
 //!
 //! ```
