@@ -257,6 +257,45 @@ mod tests {
     use super::*;
 
     #[test_log::test]
+    fn test_parse_filter_query_1() {
+        assert_eq!(
+            Ok(Node::Eq(Tag {
+                key: "hello",
+                value: "world"
+            })),
+            parse_filter_query("hello:world")
+        );
+    }
+
+    #[test_log::test]
+    fn test_parse_filter_query_2() {
+        assert_eq!(
+            Ok(Node::Not(Box::new(Node::Eq(Tag {
+                key: "hello",
+                value: "world"
+            })))),
+            parse_filter_query("!hello:world")
+        );
+    }
+
+    #[test_log::test]
+    fn test_parse_filter_query_3() {
+        assert_eq!(
+            Ok(Node::Not(Box::new(Node::Or(vec![
+                Node::Eq(Tag {
+                    key: "hello",
+                    value: "world"
+                }),
+                Node::Eq(Tag {
+                    key: "hallo",
+                    value: "welt"
+                }),
+            ])))),
+            parse_filter_query("!(hello:world OR hallo:welt)")
+        );
+    }
+
+    #[test_log::test]
     fn test_intersection() {
         assert_eq!(
             [1, 3],
