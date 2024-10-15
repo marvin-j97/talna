@@ -2,7 +2,7 @@ use crate::{SeriesId, TagSet};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use fjall::{CompressionType, PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
 
-const PARTITION_NAME: &str = "talna#tagidx";
+const PARTITION_NAME: &str = "_talna#tagidx";
 
 /// Inverted index, mapping key:value tag pairs to series IDs
 pub struct TagIndex {

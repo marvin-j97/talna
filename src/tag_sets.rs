@@ -1,7 +1,7 @@
 use crate::SeriesId;
 use fjall::{CompressionType, PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
 
-const PARTITION_NAME: &str = "talna#tags";
+const PARTITION_NAME: &str = "_talna#tags";
 
 /// Maps Series IDs to their tags
 pub struct TagSets {

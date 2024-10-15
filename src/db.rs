@@ -52,13 +52,10 @@ pub struct Database {
 // if disjoint...
 
 impl Database {
-    pub fn new<P: AsRef<Path>>(path: P, cache_mib: u64) -> fjall::Result<Self> {
-        let keyspace = fjall::Config::new(path)
-            .block_cache(Arc::new(BlockCache::with_capacity_bytes(
-                cache_mib * 1_024 * 1_024,
-            )))
-            .open_transactional()?;
-
+    /// Uses an existing `fjall` keyspace to open a time series database.
+    ///
+    /// Partitions are prefixed with `_talna#` to avoid name clashes with other applications.
+    pub fn from_keyspace(keyspace: TxKeyspace) -> fjall::Result<Self> {
         let tag_index = TagIndex::new(&keyspace)?;
         let tag_sets = TagSets::new(&keyspace)?;
         let series_mapping = SeriesMapping::new(&keyspace)?;
@@ -99,8 +96,22 @@ impl Database {
         })
     }
 
+    /// Opens a new time series database.
+    ///
+    /// If you have a keyspace already in your application, you probably
+    /// want to use [`Database::from_keyspace`] instead
+    pub fn new<P: AsRef<Path>>(path: P, cache_mib: u64) -> fjall::Result<Self> {
+        let keyspace = fjall::Config::new(path)
+            .block_cache(Arc::new(BlockCache::with_capacity_bytes(
+                cache_mib * 1_024 * 1_024,
+            )))
+            .open_transactional()?;
+
+        Self::from_keyspace(keyspace)
+    }
+
     fn get_series_name(series_id: SeriesId) -> String {
-        format!("talna#s#{series_id}")
+        format!("_talna#s#{series_id}")
     }
 
     #[doc(hidden)]

@@ -1,4 +1,4 @@
-//! A simple, embeddable time series database
+//! A simple, embeddable time series database.
 //!
 //! It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine,
 //! being able to ingest ~700k data points per seconds.
