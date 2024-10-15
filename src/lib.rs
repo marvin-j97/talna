@@ -65,7 +65,7 @@
 
 mod agg;
 mod db;
-mod merge;
+// mod merge;
 
 #[doc(hidden)]
 pub mod query;

@@ -1,7 +1,6 @@
 use super::Bucket;
 use crate::{
-    db::{Database, QueryStream},
-    tag_sets::TagSets,
+    db::{Database, SeriesStream},
     Value,
 };
 use std::ops::Bound;
@@ -56,7 +55,6 @@ impl<'a> Aggregator<'a> {
 
     pub fn run(self) -> fjall::Result<crate::HashMap<String, Vec<Bucket>>> {
         Self::raw(
-            &self.database.tag_sets,
             self.database.start_query(
                 self.metric_name,
                 self.filter_expr,
@@ -77,60 +75,52 @@ impl<'a> Aggregator<'a> {
     }
 
     pub(crate) fn raw(
-        tag_sets: &TagSets,
-        stream: QueryStream,
+        streams: Vec<SeriesStream>,
         group_by: &str,
         bucket_width: u128,
     ) -> fjall::Result<crate::HashMap<String, Vec<Bucket>>> {
-        let tagsets = stream
-            .affected_series
-            .iter()
-            .map(|&x| Ok((x, tag_sets.get(x)?)))
-            .collect::<fjall::Result<crate::HashMap<_, _>>>()?;
-
         let mut result: crate::HashMap<String, Vec<Bucket>> = crate::HashMap::default();
 
-        // TODO: we probably don't need to actually merge the streams
-        // TODO: just iterate each stream itself
-        // TODO: probably a bit faster, because we don't need to lookup the
-        // TODO: the tagset/group for each data point, just for each stream once!!!
-
-        for data_point in stream.reader {
-            let data_point = data_point?;
-
-            let Some(tagset) = tagsets.get(&data_point.series_id) else {
-                continue;
-            };
-            let Some(group) = tagset.get(group_by) else {
+        for mut stream in streams {
+            let Some(group) = stream.tags.get(group_by) else {
                 continue;
             };
 
-            result
-                .entry(group.clone())
-                .and_modify(|buckets| {
-                    // NOTE: Cannot be empty
-                    let last = buckets.last_mut().unwrap();
+            let mut buckets = vec![];
 
-                    if (last.end - data_point.ts) < bucket_width {
-                        // Add to bucket
-                        last.len += 1;
-                        last.value += data_point.value;
-                    } else {
-                        // Insert next bucket
-                        buckets.push(Bucket {
-                            end: data_point.ts,
-                            len: 1,
-                            value: data_point.value,
-                        });
-                    }
-                })
-                .or_insert_with(|| {
-                    vec![Bucket {
+            // NOTE: Initialize first bucket
+            if let Some(data_point) = stream.reader.next() {
+                let data_point = data_point?;
+
+                buckets.push(Bucket {
+                    end: data_point.ts,
+                    len: 1,
+                    value: data_point.value,
+                });
+            }
+
+            // NOTE: Read rest of data points
+            for data_point in stream.reader {
+                let data_point = data_point?;
+
+                // NOTE: Cannot be empty
+                let last = buckets.last_mut().unwrap();
+
+                if (last.end - data_point.ts) <= bucket_width {
+                    // Add to bucket
+                    last.len += 1;
+                    last.value += data_point.value;
+                } else {
+                    // Insert next bucket
+                    buckets.push(Bucket {
                         end: data_point.ts,
                         len: 1,
                         value: data_point.value,
-                    }]
-                });
+                    });
+                }
+            }
+
+            result.insert(group.clone(), buckets);
         }
 
         // TODO: can probably have the bucketing process be another struct

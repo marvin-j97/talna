@@ -1,11 +1,10 @@
-use crate::merge::StreamItem;
 use crate::query::filter::parse_filter_query;
 use crate::smap::SeriesMapping;
 use crate::tag_index::TagIndex;
 use crate::tag_sets::TagSets;
 use crate::time::timestamp;
+use crate::SeriesId;
 use crate::Value;
-use crate::{merge::Merger, SeriesId};
 use byteorder::{BigEndian, ReadBytesExt};
 use fjall::{BlockCache, Partition, PartitionCreateOptions, TxKeyspace};
 use std::io::Cursor;
@@ -27,6 +26,18 @@ impl Series {
         // NOTE: Invert timestamp to store in reverse order
         self.inner.insert((!ts).to_be_bytes(), value.to_be_bytes())
     }
+}
+
+#[derive(Debug)]
+pub struct StreamItem {
+    pub ts: u128,
+    pub value: Value,
+}
+
+pub struct SeriesStream {
+    pub(crate) id: SeriesId,
+    pub(crate) tags: crate::HashMap<String, String>,
+    pub(crate) reader: Box<dyn Iterator<Item = fjall::Result<StreamItem>>>,
 }
 
 pub struct QueryStream {
@@ -127,11 +138,11 @@ impl Database {
         format!("{metric}#{joined_tags}")
     }
 
-    fn get_reader(
+    fn prepare_query(
         &self,
         series_ids: &[SeriesId],
         (min, max): (Bound<u128>, Bound<u128>),
-    ) -> Merger<impl DoubleEndedIterator<Item = fjall::Result<StreamItem>>> {
+    ) -> crate::Result<Vec<SeriesStream>> {
         // NOTE: Invert timestamps because stored in reverse order
         let range = (
             max.map(|x| u128::to_be_bytes(!x)),
@@ -147,34 +158,41 @@ impl Database {
 
         drop(lock);
 
-        let readers = readers
+        readers
             .into_iter()
             .map(|series| {
-                series.inner.range(range).map(move |x| match x {
-                    Ok((k, v)) => {
-                        let mut k = Cursor::new(k);
-                        let ts = k.read_u128::<BigEndian>()?;
+                // TODO: maybe cache tagsets in Arc<HashMap> ...
+                let tags = self.tag_sets.get(series.id)?;
 
-                        let mut v = Cursor::new(v);
+                Ok(SeriesStream {
+                    id: series.id,
+                    tags,
+                    reader: Box::new(series.inner.range(range).map(move |x| match x {
+                        Ok((k, v)) => {
+                            let mut k = Cursor::new(k);
+                            let ts = k.read_u128::<BigEndian>()?;
+                            // NOTE: Invert timestamp back to original value
+                            let ts = !ts;
 
-                        #[cfg(feature = "high_precision")]
-                        let value = v.read_f64::<BigEndian>()?;
+                            let mut v = Cursor::new(v);
 
-                        #[cfg(not(feature = "high_precision"))]
-                        let value = v.read_f32::<BigEndian>()?;
+                            #[cfg(feature = "high_precision")]
+                            let value = v.read_f64::<BigEndian>()?;
 
-                        Ok(StreamItem {
-                            series_id: series.id,
-                            ts,
-                            value,
-                        })
-                    }
-                    Err(e) => Err(e),
+                            #[cfg(not(feature = "high_precision"))]
+                            let value = v.read_f32::<BigEndian>()?;
+
+                            Ok(StreamItem {
+                                // series_id: series.id,
+                                value,
+                                ts,
+                            })
+                        }
+                        Err(e) => Err(e),
+                    })),
                 })
             })
-            .collect::<Vec<_>>();
-
-        Merger::new(readers)
+            .collect::<crate::Result<Vec<_>>>()
     }
 
     pub(crate) fn start_query(
@@ -182,28 +200,22 @@ impl Database {
         metric: &str,
         filter_expr: &str,
         (min, max): (Bound<u128>, Bound<u128>),
-    ) -> fjall::Result<QueryStream> {
+    ) -> fjall::Result<Vec<SeriesStream>> {
         let filter = parse_filter_query(filter_expr).unwrap();
 
         let series_ids = filter.evaluate(&self.smap, &self.tag_index, metric)?;
         if series_ids.is_empty() {
             log::debug!("Query did not match any series");
-            return Ok(QueryStream {
-                affected_series: vec![],
-                reader: Box::new(std::iter::empty()),
-            });
+            return Ok(vec![]);
         }
 
         log::debug!(
             "Querying metric {metric}{{{filter}}} [{min:?}..{max:?}] in series {series_ids:?}"
         );
 
-        let reader = self.get_reader(&series_ids, (min, max));
+        let streams = self.prepare_query(&series_ids, (min, max))?;
 
-        Ok(QueryStream {
-            affected_series: series_ids,
-            reader: Box::new(reader),
-        })
+        Ok(streams)
     }
 
     pub fn avg<'a>(
@@ -211,7 +223,7 @@ impl Database {
         metric: &'a str,
         group_by: &'a str,
     ) -> crate::agg::avg::Aggregator<'a> {
-        const MINUTE_IN_NS: u128 = 900_000_000_000;
+        const MINUTE_IN_NS: u128 = 60_000_000_000;
 
         crate::agg::avg::Aggregator {
             database: self,
@@ -223,21 +235,6 @@ impl Database {
             min_ts: None,
         }
     }
-
-    /*  // TODO: QueryInput struct
-    pub fn query(
-        &self,
-        metric: &str,
-        filter_expression: &str,
-        (min, max): (Bound<u128>, Bound<u128>),
-    ) -> fjall::Result<Option<Merger<impl DoubleEndedIterator<Item = fjall::Result<StreamItem>>>>>
-    {
-        let filter = parse_filter_query(filter_expression).unwrap();
-
-        Ok(self
-            .start_query(metric, &filter, (min, max))?
-            .map(|stream| reader))
-    } */
 
     pub fn write(&self, metric: &str, value: Value, tags: &TagSet) -> fjall::Result<()> {
         self.write_at(metric, timestamp(), value, tags)
