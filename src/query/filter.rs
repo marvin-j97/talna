@@ -100,42 +100,14 @@ pub fn intersection(vecs: &[Vec<u64>]) -> Vec<u64> {
 }
 
 pub fn union(vecs: &[Vec<u64>]) -> Vec<u64> {
-    if vecs.is_empty() {
-        return vec![];
+    let mut result = vec![];
+
+    for vec in vecs {
+        result.extend(vec)
     }
 
-    // NOTE: Short-circuit
-    if vecs.iter().all(Vec::is_empty) {
-        return vec![];
-    }
-
-    let mut heap = BinaryHeap::new();
-
-    for (i, vec) in vecs.iter().enumerate() {
-        if !vec.is_empty() {
-            heap.push(Reverse((vec[0], i, 0)));
-        }
-    }
-
-    let mut result = Vec::new();
-    let mut last_value: Option<u64> = None;
-
-    while let Some(Reverse((value, vec_index, elem_index))) = heap.pop() {
-        // Skip duplicate values
-        if Some(value) != last_value {
-            result.push(value);
-            last_value = Some(value);
-        }
-
-        let next_elem_index = elem_index + 1;
-        if next_elem_index < vecs[vec_index].len() {
-            heap.push(Reverse((
-                vecs[vec_index][next_elem_index],
-                vec_index,
-                next_elem_index,
-            )));
-        }
-    }
+    result.sort();
+    result.dedup();
 
     result
 }
