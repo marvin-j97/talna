@@ -32,15 +32,6 @@ Data points are f32s by default, but can be switched to f64 using the `high_prec
 - disk space: 12 GB
 
 ```rs
-# let path = std::path::Path::new(".testy");
-# if path.try_exists()? {
-#   std::fs::remove_dir_all(path)?;
-# }
-#
-# fn timestamp() -> u128 {
-#     0
-# }
-#
 use talna::{Database, tagset};
 
 let db = Database::new(path, /* cache size in MiB */ 64)?;
