@@ -10,9 +10,22 @@ fn intersection(c: &mut Criterion) {
 }
 
 fn union(c: &mut Criterion) {
-    let v = vec![vec![1, 2, 3, 4, 5], vec![1, 3, 5], vec![1, 3]];
+    c.bench_function("union (short)", |b| {
+        let v = vec![vec![1, 2, 3, 4, 5], vec![1, 3, 5], vec![1, 3]];
+        b.iter(|| talna::query::filter::union(&v));
+    });
 
-    c.bench_function("union", |b| {
+    c.bench_function("union (long)", |b| {
+        let v = vec![
+            (0..100).collect(),
+            (50..200).collect(),
+            vec![1, 3],
+            vec![1, 3],
+            vec![5, 7],
+            vec![4, 5],
+            vec![8, 9],
+            vec![9, 10],
+        ];
         b.iter(|| talna::query::filter::union(&v));
     });
 }
@@ -101,6 +114,6 @@ criterion_group!(
     join_tags,
     parse_filter_query,
     insert_timestamp,
-    avg
+    avg,
 );
 criterion_main!(benches);
