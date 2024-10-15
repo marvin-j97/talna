@@ -319,11 +319,8 @@ impl Database {
 
                 self.smap.insert(&mut tx, &series_key, next_series_id);
 
-                self.tag_index.index(&mut tx, metric, next_series_id)?;
-                for (key, value) in tags {
-                    let term = format!("{metric}#{key}:{value}");
-                    self.tag_index.index(&mut tx, &term, next_series_id)?;
-                }
+                self.tag_index
+                    .index(&mut tx, metric, tags, next_series_id)?;
 
                 self.tag_sets
                     .insert(&mut tx, next_series_id, &Self::join_tags(tags));
