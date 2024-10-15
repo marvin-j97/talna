@@ -37,6 +37,7 @@ impl TagSets {
     }
 }
 
+// TODO: lifetime?
 fn parse_key_value_pairs(input: &str) -> crate::HashMap<String, String> {
     input
         .split(';')

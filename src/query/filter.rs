@@ -104,6 +104,11 @@ pub fn union(vecs: &[Vec<u64>]) -> Vec<u64> {
         return vec![];
     }
 
+    // NOTE: Short-circuit
+    if vecs.iter().all(Vec::is_empty) {
+        return vec![];
+    }
+
     let mut heap = BinaryHeap::new();
 
     for (i, vec) in vecs.iter().enumerate() {
