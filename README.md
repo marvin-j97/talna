@@ -64,6 +64,4 @@ let buckets = db
   .run()?;
 
 println!("{buckets:#?}");
-
-# Ok::<(), talna::Error>(())
 ```
