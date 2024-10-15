@@ -83,20 +83,85 @@ fn insert_timestamp(c: &mut Criterion) {
 
 fn avg(c: &mut Criterion) {
     c.bench_function("avg", |b| {
+        let dir = tempfile::tempdir().unwrap();
+        let db = talna::Database::new(&dir, 64).unwrap();
+
         let tags = tagset!(
             "service" => "db",
             "env" => "prod",
             "host" => "host-1",
         );
 
-        let dir = tempfile::tempdir().unwrap();
-        let db = talna::Database::new(&dir, 64).unwrap();
-
         db.write("cpu", 10.0, tags).unwrap();
         db.write("cpu", 11.0, tags).unwrap();
         db.write("cpu", 12.0, tags).unwrap();
         db.write("cpu", 13.0, tags).unwrap();
         db.write("cpu", 14.0, tags).unwrap();
+
+        b.iter(|| {
+            db.avg("cpu", "host")
+                .filter("service:db AND env:prod")
+                .run()
+                .unwrap();
+        });
+    });
+
+    c.bench_function("avg (multi series)", |b| {
+        let dir = tempfile::tempdir().unwrap();
+        let db = talna::Database::new(&dir, 64).unwrap();
+
+        {
+            let tags = tagset!(
+                "service" => "db",
+                "env" => "prod",
+                "host" => "host-1",
+            );
+
+            db.write("cpu", 10.0, tags).unwrap();
+            db.write("cpu", 11.0, tags).unwrap();
+            db.write("cpu", 12.0, tags).unwrap();
+            db.write("cpu", 13.0, tags).unwrap();
+            db.write("cpu", 14.0, tags).unwrap();
+        }
+        {
+            let tags = tagset!(
+                "service" => "db",
+                "env" => "prod",
+                "host" => "host-2",
+            );
+
+            db.write("cpu", 10.0, tags).unwrap();
+            db.write("cpu", 11.0, tags).unwrap();
+            db.write("cpu", 12.0, tags).unwrap();
+            db.write("cpu", 13.0, tags).unwrap();
+            db.write("cpu", 14.0, tags).unwrap();
+        }
+        {
+            let tags = tagset!(
+                "service" => "db",
+                "env" => "prod",
+                "host" => "host-3",
+            );
+
+            db.write("cpu", 10.0, tags).unwrap();
+            db.write("cpu", 11.0, tags).unwrap();
+            db.write("cpu", 12.0, tags).unwrap();
+            db.write("cpu", 13.0, tags).unwrap();
+            db.write("cpu", 14.0, tags).unwrap();
+        }
+        {
+            let tags = tagset!(
+                "service" => "ui",
+                "env" => "prod",
+                "host" => "host-3",
+            );
+
+            db.write("cpu", 10.0, tags).unwrap();
+            db.write("cpu", 11.0, tags).unwrap();
+            db.write("cpu", 12.0, tags).unwrap();
+            db.write("cpu", 13.0, tags).unwrap();
+            db.write("cpu", 14.0, tags).unwrap();
+        }
 
         b.iter(|| {
             db.avg("cpu", "host")
