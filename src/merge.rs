@@ -78,9 +78,6 @@ impl<I: Iterator<Item = fjall::Result<StreamItem>>> Iterator for Merger<I> {
 
         fail_iter!(self.advance(head.0));
 
-        // NOTE: Invert timestamp back to original value
-        head.1.ts = !head.1.ts;
-
         Some(Ok(head.1))
     }
 }

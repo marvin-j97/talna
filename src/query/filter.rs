@@ -123,7 +123,7 @@ impl<'a> Node<'a> {
         metric_name: &str,
     ) -> fjall::Result<Vec<SeriesId>> {
         match self {
-            Node::AllStar => Ok(smap.list_all()?.into_iter().collect()),
+            Node::AllStar => tag_index.query_eq(metric_name),
             Node::Eq(leaf) => {
                 let term = format!("{metric_name}#{}:{}", leaf.key, leaf.value);
                 tag_index.query_eq(&term)

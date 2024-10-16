@@ -81,10 +81,7 @@ impl<'a> Aggregator<'a> {
     ) -> fjall::Result<crate::HashMap<String, Vec<Bucket>>> {
         let mut result: crate::HashMap<String, Vec<Bucket>> = crate::HashMap::default();
 
-        // TODO: if 2 series have the same group, one will overwrite the
-        // other ... need to be merged...?
-        // TODO: maybe merge all streams that have the same
-        // group, and then iterate over each group
+        // TODO: see AVG
 
         for mut stream in streams {
             let Some(group) = stream.tags.get(group_by) else {
@@ -128,19 +125,7 @@ impl<'a> Aggregator<'a> {
             result.insert(group.clone(), buckets);
         }
 
-        // TODO: can probably have the bucketing process be another struct
-        // and the aggregation just an configuration option (SUM, AVG, MAX, MIN, etc)
-
-        for buckets in result.values_mut() {
-            for bucket in buckets {
-                // NOTE: Do AVG
-                bucket.value /= bucket.len as Value;
-            }
-        }
-
-        // TODO: should probably just return bucket through .next()
-        // Iterator
-        // the above should become a Builder
+        // TODO: see AVG
 
         Ok(result)
     }

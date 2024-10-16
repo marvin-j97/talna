@@ -30,6 +30,7 @@ impl Series {
 
 #[derive(Debug)]
 pub struct StreamItem {
+    pub series_id: SeriesId,
     pub ts: u128,
     pub value: Value,
 }
@@ -189,7 +190,7 @@ impl Database {
                             let value = v.read_f32::<BigEndian>()?;
 
                             Ok(StreamItem {
-                                // series_id: series.id,
+                                series_id: series.id,
                                 value,
                                 ts,
                             })
@@ -232,6 +233,24 @@ impl Database {
         const MINUTE_IN_NS: u128 = 60_000_000_000;
 
         crate::agg::avg::Aggregator {
+            database: self,
+            metric_name: metric,
+            filter_expr: "*", // TODO: need wildcard
+            bucket_width: MINUTE_IN_NS,
+            group_by,
+            max_ts: None,
+            min_ts: None,
+        }
+    }
+
+    pub fn sum<'a>(
+        &'a self,
+        metric: &'a str,
+        group_by: &'a str,
+    ) -> crate::agg::sum::Aggregator<'a> {
+        const MINUTE_IN_NS: u128 = 60_000_000_000;
+
+        crate::agg::sum::Aggregator {
             database: self,
             metric_name: metric,
             filter_expr: "*", // TODO: need wildcard

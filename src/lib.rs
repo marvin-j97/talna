@@ -33,7 +33,7 @@
 //!
 //! db.write(
 //!     "cpu.total", // metric name
-//!     25.42, // actual value (f64)
+//!     25.42, // actual value (float)
 //!     tagset!(
 //!         "env" => "prod",
 //!         "service" => "db",
@@ -43,7 +43,7 @@
 //!
 //! db.write(
 //!     "cpu.total", // metric name
-//!     42.42, // actual value (f64)
+//!     42.42, // actual value (float)
 //!     tagset!(
 //!         "env" => "prod",
 //!         "service" => "db",

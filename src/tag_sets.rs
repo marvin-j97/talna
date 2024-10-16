@@ -29,6 +29,7 @@ impl TagSets {
         Ok(self
             .partition
             .get(series_id.to_be_bytes())?
+            .filter(|x| !x.is_empty())
             .map(|bytes| {
                 let reader = std::str::from_utf8(&bytes).expect("should be utf-8");
                 parse_key_value_pairs(reader)
