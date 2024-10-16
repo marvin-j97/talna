@@ -140,9 +140,15 @@ impl Database {
         result
     }
 
-    pub(crate) fn create_series_key(metric: &str, tags: &TagSet) -> String {
+    #[doc(hidden)]
+    pub fn create_series_key(metric: &str, tags: &TagSet) -> String {
         let joined_tags = Self::join_tags(tags);
-        format!("{metric}#{joined_tags}")
+
+        let mut str = String::with_capacity(metric.len() + 1 + joined_tags.len());
+        str.push_str(metric);
+        str.push('#');
+        str.push_str(&joined_tags);
+        str
     }
 
     fn prepare_query(

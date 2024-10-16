@@ -44,6 +44,20 @@ fn join_tags(c: &mut Criterion) {
     });
 }
 
+fn create_series_key(c: &mut Criterion) {
+    let tags = tagset!(
+      "service" => "db",
+      "env" => "prod",
+      "host" => "host-1",
+    );
+
+    c.bench_function("create series key", |b| {
+        b.iter(|| {
+            talna::Database::create_series_key("cpu.0.total", tags);
+        });
+    });
+}
+
 fn parse_filter_query(c: &mut Criterion) {
     c.bench_function("parse filter query (simple)", |b| {
         b.iter(|| {
@@ -176,6 +190,7 @@ criterion_group!(
     benches,
     intersection,
     union,
+    create_series_key,
     join_tags,
     parse_filter_query,
     insert_timestamp,
