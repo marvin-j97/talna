@@ -10,3 +10,10 @@ pub struct Bucket {
     pub value: Value,
     pub len: usize,
 }
+
+impl Bucket {
+    pub fn middle(&self) -> u128 {
+        let diff = self.end - self.start;
+        self.start + diff / 2
+    }
+}

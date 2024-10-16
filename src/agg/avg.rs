@@ -81,9 +81,6 @@ impl<'a> Aggregator<'a> {
     ) -> fjall::Result<crate::HashMap<String, Vec<Bucket>>> {
         let mut result = super::sum::Aggregator::raw(streams, group_by, bucket_width)?;
 
-        // TODO: can probably have the bucketing process be another struct
-        // and the aggregation just an configuration option (SUM, AVG, MAX, MIN, etc)
-
         for buckets in result.values_mut() {
             for bucket in buckets {
                 // NOTE: Do AVG
@@ -92,9 +89,5 @@ impl<'a> Aggregator<'a> {
         }
 
         Ok(result)
-
-        // TODO: should probably just return bucket through .next()
-        // Iterator
-        // the above should become a Builder
     }
 }
