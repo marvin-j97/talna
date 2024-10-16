@@ -1,4 +1,5 @@
 use crate::query::filter::parse_filter_query;
+use crate::series_key::SeriesKey;
 use crate::smap::SeriesMapping;
 use crate::tag_index::TagIndex;
 use crate::tag_sets::TagSets;
@@ -115,41 +116,14 @@ impl Database {
         format!("_talna#s#{series_id}")
     }
 
-    #[doc(hidden)]
-    pub fn join_tags(tags: &TagSet) -> String {
-        let mut tags = tags.iter().collect::<Vec<_>>();
-        tags.sort();
-
-        let total_len = tags
-            .iter()
-            .map(|(key, value)| key.len() + value.len() + 1) // +1 for the ':' between key and value
-            .sum::<usize>()
-            + tags.len().saturating_sub(1); // Add space for the semicolons
-
-        let mut result = String::with_capacity(total_len);
-
-        for (idx, (key, value)) in tags.iter().enumerate() {
-            if idx > 0 {
-                result.push(';');
-            }
-            result.push_str(key);
-            result.push(':');
-            result.push_str(value);
-        }
-
-        result
-    }
-
-    #[doc(hidden)]
+    /*    #[doc(hidden)]
     pub fn create_series_key(metric: &str, tags: &TagSet) -> String {
-        let joined_tags = Self::join_tags(tags);
-
-        let mut str = String::with_capacity(metric.len() + 1 + joined_tags.len());
+        let mut str = Self::allocate_string_for_tags(tags, metric.len() + 1);
         str.push_str(metric);
         str.push('#');
-        str.push_str(&joined_tags);
+        Self::join_tags(&mut str, tags);
         str
-    }
+    } */
 
     fn prepare_query(
         &self,
@@ -283,8 +257,8 @@ impl Database {
             panic!("oops");
         }
 
-        let series_key = Self::create_series_key(metric, tags);
-        let series_id = self.smap.get(&series_key)?;
+        let series_key = SeriesKey::new(metric, tags).into_inner();
+        let series_id: Option<u64> = self.smap.get(&series_key)?;
 
         let series = if let Some(series_id) = series_id {
             // NOTE: Series already exists (happy path)
@@ -350,8 +324,11 @@ impl Database {
                 self.tag_index
                     .index(&mut tx, metric, tags, next_series_id)?;
 
+                let mut serialized_tag_set = SeriesKey::allocate_string_for_tags(tags, 0);
+                SeriesKey::join_tags(&mut serialized_tag_set, tags);
+
                 self.tag_sets
-                    .insert(&mut tx, next_series_id, &Self::join_tags(tags));
+                    .insert(&mut tx, next_series_id, &serialized_tag_set);
 
                 tx.commit()?;
 
@@ -368,48 +345,5 @@ impl Database {
         series.insert(ts, value)?;
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::tagset;
-
-    #[test_log::test]
-    fn create_series_key() {
-        assert_eq!(
-            "cpu.total#service:web",
-            Database::create_series_key("cpu.total", tagset!("service" => "web"))
-        );
-    }
-
-    #[test_log::test]
-    fn create_series_key_2() {
-        assert_eq!(
-            "cpu.total#host:i-187;service:web",
-            Database::create_series_key(
-                "cpu.total",
-                tagset!(
-                        "service" => "web",
-                        "host" => "i-187",
-                )
-            )
-        );
-    }
-
-    #[test_log::test]
-    fn create_series_key_3() {
-        assert_eq!(
-            "cpu.total#env:dev;host:i-187;service:web",
-            Database::create_series_key(
-                "cpu.total",
-                tagset!(
-                    "service" => "web",
-                    "host" => "i-187",
-                    "env" => "dev"
-                )
-            )
-        );
     }
 }

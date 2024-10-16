@@ -70,6 +70,7 @@ mod db;
 #[doc(hidden)]
 pub mod query;
 
+mod series_key;
 mod smap;
 mod tag_index;
 mod tag_sets;
@@ -82,6 +83,9 @@ pub use db::{Database, TagSet};
 
 #[doc(hidden)]
 pub use time::timestamp;
+
+#[doc(hidden)]
+pub use series_key::SeriesKey;
 
 #[cfg(feature = "high_precision")]
 pub type Value = f64;

@@ -39,7 +39,8 @@ fn join_tags(c: &mut Criterion) {
 
     c.bench_function("join tags", |b| {
         b.iter(|| {
-            talna::Database::join_tags(tags);
+            let mut str = talna::SeriesKey::allocate_string_for_tags(tags, 0);
+            talna::SeriesKey::join_tags(&mut str, tags);
         });
     });
 }
@@ -53,7 +54,7 @@ fn create_series_key(c: &mut Criterion) {
 
     c.bench_function("create series key", |b| {
         b.iter(|| {
-            talna::Database::create_series_key("cpu.0.total", tags);
+            talna::SeriesKey::new("cpu.0.total", tags);
         });
     });
 }
