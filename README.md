@@ -15,7 +15,7 @@ Icelandic, Old Norse: Numbers
 A simple, embeddable time series database.
 
 It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine,
-being able to ingest ~700k data points per seconds.
+being able to ingest ~700k data points per second.
 
 The LSM-based storage engine causes no degradation in write ingestion speed, even for large datasets,
 has low write amplification (good for SSDs) and compresses the on-disk data (again, good for SSDs).
