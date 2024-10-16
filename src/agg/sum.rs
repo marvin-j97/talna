@@ -1,8 +1,5 @@
 use super::Bucket;
-use crate::{
-    db::{Database, SeriesStream},
-    Value,
-};
+use crate::db::{Database, SeriesStream};
 use std::ops::Bound;
 
 pub struct Aggregator<'a> {
@@ -95,6 +92,7 @@ impl<'a> Aggregator<'a> {
                 let data_point = data_point?;
 
                 buckets.push(Bucket {
+                    start: data_point.ts,
                     end: data_point.ts,
                     len: 1,
                     value: data_point.value,
@@ -112,9 +110,11 @@ impl<'a> Aggregator<'a> {
                     // Add to bucket
                     last.len += 1;
                     last.value += data_point.value;
+                    last.start = data_point.ts;
                 } else {
                     // Insert next bucket
                     buckets.push(Bucket {
+                        start: data_point.ts,
                         end: data_point.ts,
                         len: 1,
                         value: data_point.value,

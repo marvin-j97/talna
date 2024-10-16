@@ -79,54 +79,7 @@ impl<'a> Aggregator<'a> {
         group_by: &str,
         bucket_width: u128,
     ) -> fjall::Result<crate::HashMap<String, Vec<Bucket>>> {
-        let mut result: crate::HashMap<String, Vec<Bucket>> = crate::HashMap::default();
-
-        // TODO: if 2 series have the same group, one will overwrite the
-        // other ... need to be merged...?
-        // TODO: maybe merge all streams that have the same
-        // group, and then iterate over each group
-
-        for mut stream in streams {
-            let Some(group) = stream.tags.get(group_by) else {
-                continue;
-            };
-
-            let mut buckets = vec![];
-
-            // NOTE: Initialize first bucket
-            if let Some(data_point) = stream.reader.next() {
-                let data_point = data_point?;
-
-                buckets.push(Bucket {
-                    end: data_point.ts,
-                    len: 1,
-                    value: data_point.value,
-                });
-            }
-
-            // NOTE: Read rest of data points
-            for data_point in stream.reader {
-                let data_point = data_point?;
-
-                // NOTE: Cannot be empty
-                let last = buckets.last_mut().unwrap();
-
-                if (last.end - data_point.ts) <= bucket_width {
-                    // Add to bucket
-                    last.len += 1;
-                    last.value += data_point.value;
-                } else {
-                    // Insert next bucket
-                    buckets.push(Bucket {
-                        end: data_point.ts,
-                        len: 1,
-                        value: data_point.value,
-                    });
-                }
-            }
-
-            result.insert(group.clone(), buckets);
-        }
+        let mut result = super::sum::Aggregator::raw(streams, group_by, bucket_width)?;
 
         // TODO: can probably have the bucketing process be another struct
         // and the aggregation just an configuration option (SUM, AVG, MAX, MIN, etc)
@@ -138,10 +91,10 @@ impl<'a> Aggregator<'a> {
             }
         }
 
+        Ok(result)
+
         // TODO: should probably just return bucket through .next()
         // Iterator
         // the above should become a Builder
-
-        Ok(result)
     }
 }
