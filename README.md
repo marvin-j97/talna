@@ -60,8 +60,9 @@ let buckets = db
   .avg(/* metric */ "cpu.total", /* group by tag */ "host")
   .filter("env:prod AND service:db")
   // use .start() and .end() to set the time bounds
-  // use .bucket() to set the granularity (bucket width in nanoseconds)
-  .run()?;
+  // use .granularity() to set the granularity (bucket width in nanoseconds)
+  .build()?
+  .collect()?;
 
 println!("{buckets:#?}");
 ```
