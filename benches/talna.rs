@@ -54,7 +54,7 @@ fn create_series_key(c: &mut Criterion) {
 
     c.bench_function("create series key", |b| {
         b.iter(|| {
-            talna::SeriesKey::new("cpu.0.total", tags);
+            talna::SeriesKey::format("cpu.0.total", tags);
         });
     });
 }

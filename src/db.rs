@@ -305,7 +305,7 @@ impl Database {
             panic!("oops");
         }
 
-        let series_key = SeriesKey::new(metric, tags);
+        let series_key = SeriesKey::format(metric, tags);
         let series_id: Option<u64> = self.smap.get(&series_key)?;
 
         let series = if let Some(series_id) = series_id {

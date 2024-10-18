@@ -29,7 +29,7 @@ impl SeriesKey {
         }
     }
 
-    pub fn new(metric: &str, tags: &TagSet) -> String {
+    pub fn format(metric: &str, tags: &TagSet) -> String {
         let mut str = Self::allocate_string_for_tags(tags, metric.len() + 1);
         str.push_str(metric);
         str.push('#');
@@ -47,7 +47,7 @@ mod tests {
     fn create_series_key() {
         assert_eq!(
             "cpu.total#service:web",
-            SeriesKey::new("cpu.total", tagset!("service" => "web")),
+            SeriesKey::format("cpu.total", tagset!("service" => "web")),
         );
     }
 
@@ -55,7 +55,7 @@ mod tests {
     fn create_series_key_2() {
         assert_eq!(
             "cpu.total#host:i-187;service:web",
-            SeriesKey::new(
+            SeriesKey::format(
                 "cpu.total",
                 tagset!(
                         "service" => "web",
@@ -69,7 +69,7 @@ mod tests {
     fn create_series_key_3() {
         assert_eq!(
             "cpu.total#env:dev;host:i-187;service:web",
-            SeriesKey::new(
+            SeriesKey::format(
                 "cpu.total",
                 tagset!(
                     "service" => "web",
