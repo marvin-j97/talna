@@ -128,7 +128,7 @@ impl TagIndex {
             ids.extend(postings);
         }
 
-        ids.sort();
+        ids.sort_unstable();
         ids.dedup();
 
         Ok(ids)

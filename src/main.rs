@@ -32,7 +32,7 @@ fn main() -> fjall::Result<()> {
     {
         use rand::Rng;
 
-        for host in ["h-0", "h-1", "h-2"] {
+        for host in ["h-0"] {
             let mut rng = rand::thread_rng();
 
             let tagset = talna::tagset!(

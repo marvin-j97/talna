@@ -136,7 +136,7 @@ impl Database {
 
         let readers = series_ids
             .iter()
-            .map(|id| lock.get(id).cloned().unwrap())
+            .map(|id| lock.get(id).cloned().expect("series should exist"))
             .collect::<Vec<_>>();
 
         drop(lock);
@@ -184,7 +184,8 @@ impl Database {
         filter_expr: &str,
         (min, max): (Bound<u128>, Bound<u128>),
     ) -> fjall::Result<Vec<SeriesStream>> {
-        let filter = parse_filter_query(filter_expr).unwrap();
+        // TODO: crate::Error with InvalidQuery enum variant
+        let filter = parse_filter_query(filter_expr).expect("filter should be valid");
 
         let series_ids = filter.evaluate(&self.smap, &self.tag_index, metric)?;
         if series_ids.is_empty() {
@@ -304,9 +305,10 @@ impl Database {
         value: Value,
         tags: &TagSet,
     ) -> fjall::Result<()> {
-        if !metric.chars().all(|c| METRICS_NAME_CHARS.contains(c)) {
-            panic!("oops");
-        }
+        assert!(
+            metric.chars().all(|c| METRICS_NAME_CHARS.contains(c)),
+            "oops"
+        );
 
         let series_key = SeriesKey::format(metric, tags);
         let series_id: Option<u64> = self.smap.get(&series_key)?;
@@ -319,7 +321,7 @@ impl Database {
                 .expect("lock is poisoned")
                 .get(&series_id)
                 .cloned()
-                .unwrap()
+                .expect("series should exist")
         } else {
             // NOTE: Create series
             //
@@ -344,7 +346,7 @@ impl Database {
                     .expect("lock is poisoned")
                     .get(&series_id)
                     .cloned()
-                    .unwrap()
+                    .expect("series should exist")
             } else {
                 // NOTE: Actually create series
 
@@ -402,6 +404,7 @@ impl Database {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::tagset;

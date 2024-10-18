@@ -49,7 +49,7 @@ impl<I: Iterator<Item = crate::Result<StreamItem>>> Merger<I> {
     }
 
     fn advance(&mut self, idx: usize) -> crate::Result<()> {
-        if let Some(item) = self.readers.get_mut(idx).unwrap().next() {
+        if let Some(item) = self.readers.get_mut(idx).expect("should exist").next() {
             self.heap.push(HeapItem(idx, item?));
         }
         Ok(())

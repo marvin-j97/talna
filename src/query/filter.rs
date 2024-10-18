@@ -55,7 +55,9 @@ pub fn intersection(vecs: &[Vec<u64>]) -> Vec<u64> {
         return vec![];
     }
 
-    let first_vec = &vecs[0];
+    // NOTE: Cannot be empty because of check above, so expect is fine
+    #[allow(clippy::expect_used)]
+    let first_vec = vecs.first().expect("should exist");
     let mut result = Vec::new();
 
     'outer: for &elem in first_vec {
@@ -157,8 +159,8 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
         match tok {
             lexer::Token::Identifier(id) => {
                 let mut splits = id.split(':');
-                let k = splits.next().unwrap();
-                let v = splits.next().unwrap();
+                let k = splits.next().expect("should be valid identifier");
+                let v = splits.next().expect("should be valid identifier");
                 output_queue.push_back(Item::Identifier((k, v)));
             }
             lexer::Token::And => {
@@ -169,7 +171,7 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
 
                     // And has higher precedence than Or but lower than Not
                     if matches!(top, Item::And | Item::Not) {
-                        output_queue.push_back(op_stack.pop_back().unwrap());
+                        output_queue.push_back(op_stack.pop_back().expect("top should exist"));
                     } else {
                         break;
                     }
@@ -184,7 +186,7 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
 
                     // Or has lower precedence, so we pop And and Not operators
                     if matches!(top, Item::And | Item::Not) {
-                        output_queue.push_back(op_stack.pop_back().unwrap());
+                        output_queue.push_back(op_stack.pop_back().expect("top should exist"));
                     } else {
                         break;
                     }
@@ -208,7 +210,7 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
                         break;
                     }
 
-                    output_queue.push_back(op_stack.pop_back().unwrap());
+                    output_queue.push_back(op_stack.pop_back().expect("top should exist"));
                 }
 
                 let Some(top) = op_stack.pop_back() else {
@@ -237,17 +239,27 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
                 buf.push(Node::Eq(Tag { key, value }));
             }
             Item::And => {
-                let b = buf.pop().unwrap();
-                let a = buf.pop().unwrap();
+                let Some(b) = buf.pop() else {
+                    return Err(());
+                };
+                let Some(a) = buf.pop() else {
+                    return Err(());
+                };
                 buf.push(Node::And(vec![a, b]));
             }
             Item::Or => {
-                let b = buf.pop().unwrap();
-                let a = buf.pop().unwrap();
+                let Some(b) = buf.pop() else {
+                    return Err(());
+                };
+                let Some(a) = buf.pop() else {
+                    return Err(());
+                };
                 buf.push(Node::Or(vec![a, b]));
             }
             Item::Not => {
-                let a = buf.pop().unwrap();
+                let Some(a) = buf.pop() else {
+                    return Err(());
+                };
                 buf.push(Node::Not(Box::new(a)));
             }
             Item::ParanOpen => return Err(()),
@@ -257,7 +269,7 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
 
     debug_assert_eq!(1, buf.len());
 
-    Ok(buf.pop().unwrap())
+    Ok(buf.pop().expect("queue should not be empty"))
 }
 
 #[cfg(test)]
