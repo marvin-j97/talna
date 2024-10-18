@@ -27,14 +27,14 @@ pub trait Aggregation {
 pub struct Aggregator<'a, A: Aggregation + Clone> {
     config: Builder<'a, A>,
     bucket: Bucket,
-    reader: Box<dyn Iterator<Item = fjall::Result<StreamItem>>>,
+    reader: Box<dyn Iterator<Item = crate::Result<StreamItem>>>,
     phantom: PhantomData<A>,
 }
 
 impl<'a, A: Aggregation + Clone> Aggregator<'a, A> {
     pub fn new(
         builder: Builder<'a, A>,
-        reader: Box<dyn Iterator<Item = fjall::Result<StreamItem>>>,
+        reader: Box<dyn Iterator<Item = crate::Result<StreamItem>>>,
     ) -> Self {
         Self {
             config: builder,

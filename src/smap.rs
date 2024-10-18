@@ -10,7 +10,7 @@ pub struct SeriesMapping {
 }
 
 impl SeriesMapping {
-    pub fn new(keyspace: &TxKeyspace) -> fjall::Result<Self> {
+    pub fn new(keyspace: &TxKeyspace) -> crate::Result<Self> {
         let opts = PartitionCreateOptions::default()
             .block_size(4_096)
             .compression(CompressionType::Lz4)
@@ -25,14 +25,14 @@ impl SeriesMapping {
         tx.insert(&self.partition, series_key, series_id.to_be_bytes());
     }
 
-    pub fn get(&self, series_key: &str) -> fjall::Result<Option<SeriesId>> {
+    pub fn get(&self, series_key: &str) -> crate::Result<Option<SeriesId>> {
         Ok(self.partition.get(series_key)?.map(|bytes| {
             let mut reader = &bytes[..];
             reader.read_u64::<BigEndian>().expect("should deserialize")
         }))
     }
 
-    pub fn list_all(&self) -> fjall::Result<HashSet<SeriesId>> {
+    pub fn list_all(&self) -> crate::Result<HashSet<SeriesId>> {
         // TODO: read_tx
         self.partition
             .inner()
@@ -42,8 +42,8 @@ impl SeriesMapping {
                     let mut reader = &v[..];
                     Ok(reader.read_u64::<BigEndian>().expect("should deserialize"))
                 }
-                Err(e) => Err(e),
+                Err(e) => Err(e.into()),
             })
-            .collect::<fjall::Result<HashSet<_>>>()
+            .collect::<crate::Result<HashSet<_>>>()
     }
 }

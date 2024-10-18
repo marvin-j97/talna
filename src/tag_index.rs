@@ -10,7 +10,7 @@ pub struct TagIndex {
 }
 
 impl TagIndex {
-    pub fn new(keyspace: &TxKeyspace) -> fjall::Result<Self> {
+    pub fn new(keyspace: &TxKeyspace) -> crate::Result<Self> {
         let opts = PartitionCreateOptions::default()
             .block_size(4_096)
             .compression(CompressionType::Lz4)
@@ -45,7 +45,7 @@ impl TagIndex {
         metric: &str,
         tags: &TagSet,
         series_id: SeriesId,
-    ) -> fjall::Result<()> {
+    ) -> crate::Result<()> {
         self.index_term(tx, metric, series_id)?;
 
         for (key, value) in tags {
@@ -61,7 +61,7 @@ impl TagIndex {
         tx: &mut WriteTransaction,
         term: &str,
         series_id: SeriesId,
-    ) -> fjall::Result<()> {
+    ) -> crate::Result<()> {
         log::trace!("indexing {term:?} => {series_id}");
 
         tx.fetch_update(&self.partition, term, |bytes| match bytes {
@@ -90,7 +90,7 @@ impl TagIndex {
     }
 
     // TODO: read_tx
-    pub fn query_eq(&self, term: &str) -> fjall::Result<Vec<SeriesId>> {
+    pub fn query_eq(&self, term: &str) -> crate::Result<Vec<SeriesId>> {
         Ok(self
             .partition
             .get(term)?
@@ -110,7 +110,7 @@ impl TagIndex {
     }
 
     // TODO: read_tx
-    pub fn query_prefix(&self, metric: &str, prefix: &str) -> fjall::Result<Vec<SeriesId>> {
+    pub fn query_prefix(&self, metric: &str, prefix: &str) -> crate::Result<Vec<SeriesId>> {
         let mut ids = vec![];
 
         for kv in self.partition.inner().prefix(format!("{metric}#{prefix}")) {

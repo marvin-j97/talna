@@ -94,7 +94,7 @@ impl<'a> Node<'a> {
         smap: &SeriesMapping,
         tag_index: &TagIndex,
         metric_name: &str,
-    ) -> fjall::Result<Vec<SeriesId>> {
+    ) -> crate::Result<Vec<SeriesId>> {
         match self {
             Node::AllStar => tag_index.query_eq(metric_name),
             Node::Eq(leaf) => {
@@ -106,7 +106,7 @@ impl<'a> Node<'a> {
                 let ids = children
                     .iter()
                     .map(|c| Self::evaluate(c, smap, tag_index, metric_name))
-                    .collect::<fjall::Result<Vec<_>>>()?;
+                    .collect::<crate::Result<Vec<_>>>()?;
 
                 Ok(intersection(&ids))
             }
@@ -114,7 +114,7 @@ impl<'a> Node<'a> {
                 let ids = children
                     .iter()
                     .map(|c| Self::evaluate(c, smap, tag_index, metric_name))
-                    .collect::<fjall::Result<Vec<_>>>()?;
+                    .collect::<crate::Result<Vec<_>>>()?;
 
                 Ok(union(&ids))
             }

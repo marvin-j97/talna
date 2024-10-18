@@ -9,7 +9,7 @@ pub struct TagSets {
 }
 
 impl TagSets {
-    pub fn new(keyspace: &TxKeyspace) -> fjall::Result<Self> {
+    pub fn new(keyspace: &TxKeyspace) -> crate::Result<Self> {
         let opts = PartitionCreateOptions::default()
             .block_size(4_096)
             .compression(CompressionType::Lz4)
@@ -25,7 +25,7 @@ impl TagSets {
         tx.insert(&self.partition, series_id.to_be_bytes(), tags);
     }
 
-    pub fn get(&self, series_id: SeriesId) -> fjall::Result<crate::HashMap<String, String>> {
+    pub fn get(&self, series_id: SeriesId) -> crate::Result<crate::HashMap<String, String>> {
         Ok(self
             .partition
             .get(series_id.to_be_bytes())?

@@ -75,6 +75,7 @@
 mod agg;
 mod db;
 mod duration;
+mod error;
 mod merge;
 
 #[doc(hidden)]
@@ -91,7 +92,7 @@ type HashMap<K, V> = std::collections::HashMap<K, V, rustc_hash::FxBuildHasher>;
 
 pub use db::{Database, TagSet};
 pub use duration::Duration;
-
+pub use error::{Error, Result};
 pub use time::timestamp;
 
 #[doc(hidden)]
@@ -104,13 +105,6 @@ pub type Value = f64;
 /// Value used in time series
 #[cfg(not(feature = "high_precision"))]
 pub type Value = f32;
-
-/// Error type
-// TODO: custom error
-pub type Error = fjall::Error;
-
-/// Result helper type
-pub type Result<T> = std::result::Result<T, Error>;
 
 /// Macro to create a list of tags.
 ///

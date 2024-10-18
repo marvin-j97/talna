@@ -9,7 +9,7 @@ use tikv_jemallocator::Jemalloc;
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
-fn main() -> fjall::Result<()> {
+fn main() -> talna::Result<()> {
     env_logger::builder()
         .filter_module("lsm_tree", log::LevelFilter::Warn)
         .filter_module("fjall", log::LevelFilter::Info)

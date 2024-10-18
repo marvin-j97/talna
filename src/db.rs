@@ -13,6 +13,20 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::{collections::BTreeMap, ops::Bound, path::Path, sync::RwLock};
 
+/* /// Sets the database mode.
+#[derive(Default)]
+pub enum Mode {
+    #[default]
+    /// Every write operation will be flushed to OS buffers,
+    /// for application crash safety (not power loss safety).
+    Standard,
+
+    /// Increases write throughput at the cost of lower durability guarantees.
+    ///
+    /// Write become faster by skipping the `write()` syscall to OS buffers.
+    Speedy,
+} */
+
 /// A list of tags.
 pub type TagSet<'a> = [(&'a str, &'a str)];
 
@@ -27,9 +41,11 @@ pub struct Series {
 }
 
 impl Series {
-    pub fn insert(&self, ts: u128, value: Value) -> fjall::Result<()> {
+    pub fn insert(&self, ts: u128, value: Value) -> crate::Result<()> {
         // NOTE: Invert timestamp to store in reverse order
-        self.inner.insert((!ts).to_be_bytes(), value.to_be_bytes())
+        self.inner
+            .insert((!ts).to_be_bytes(), value.to_be_bytes())
+            .map_err(Into::into)
     }
 }
 
@@ -43,7 +59,7 @@ pub struct StreamItem {
 pub struct SeriesStream {
     // pub(crate) series_id: SeriesId,
     pub(crate) tags: crate::HashMap<String, String>,
-    pub(crate) reader: Box<dyn Iterator<Item = fjall::Result<StreamItem>>>,
+    pub(crate) reader: Box<dyn Iterator<Item = crate::Result<StreamItem>>>,
 }
 
 pub struct DatabaseInner {
@@ -69,7 +85,7 @@ impl Database {
     /// # Errors
     ///
     /// Returns error if an I/O error occured.
-    pub fn from_keyspace(keyspace: TxKeyspace) -> fjall::Result<Self> {
+    pub fn from_keyspace(keyspace: TxKeyspace) -> crate::Result<Self> {
         let tag_index = TagIndex::new(&keyspace)?;
         let tag_sets = TagSets::new(&keyspace)?;
         let series_mapping = SeriesMapping::new(&keyspace)?;
@@ -118,7 +134,7 @@ impl Database {
     /// # Errors
     ///
     /// Returns error if an I/O error occured.
-    pub fn new<P: AsRef<Path>>(path: P, cache_mib: u64) -> fjall::Result<Self> {
+    pub fn new<P: AsRef<Path>>(path: P, cache_mib: u64) -> crate::Result<Self> {
         let keyspace = fjall::Config::new(path)
             .block_cache(Arc::new(BlockCache::with_capacity_bytes(
                 cache_mib * 1_024 * 1_024,
@@ -149,7 +165,7 @@ impl Database {
             .iter()
             .map(|id| lock.get(id).cloned().expect("series should exist"))
             .map(|series| {
-                // TODO: maybe cache tagsets in Arc<HashMap> ...
+                // TODO: maybe cache tagsets in QuickCache...
                 let tags = self.0.tag_sets.get(series.id)?;
 
                 Ok(SeriesStream {
@@ -176,7 +192,7 @@ impl Database {
                                 ts,
                             })
                         }
-                        Err(e) => Err(e),
+                        Err(e) => Err(e.into()),
                     })),
                 })
             })
@@ -188,7 +204,7 @@ impl Database {
         metric: &str,
         filter_expr: &str,
         (min, max): (Bound<u128>, Bound<u128>),
-    ) -> fjall::Result<Vec<SeriesStream>> {
+    ) -> crate::Result<Vec<SeriesStream>> {
         // TODO: crate::Error with InvalidQuery enum variant
         let filter = parse_filter_query(filter_expr).expect("filter should be valid");
 
@@ -307,7 +323,7 @@ impl Database {
     /// # Errors
     ///
     /// Returns error if an I/O error occured.
-    pub fn write(&self, metric: &str, value: Value, tags: &TagSet) -> fjall::Result<()> {
+    pub fn write(&self, metric: &str, value: Value, tags: &TagSet) -> crate::Result<()> {
         self.write_at(metric, timestamp(), value, tags)
     }
 
@@ -318,7 +334,7 @@ impl Database {
         ts: u128,
         value: Value,
         tags: &TagSet,
-    ) -> fjall::Result<()> {
+    ) -> crate::Result<()> {
         assert!(
             metric.chars().all(|c| METRICS_NAME_CHARS.contains(c)),
             "oops"
@@ -374,8 +390,8 @@ impl Database {
                 .read()
                 .expect("lock is poisoned")
                 .get(&series_id)
-                    .cloned()
-                    .expect("series should exist")
+                .cloned()
+                .expect("series should exist")
         } else {
             // NOTE: Actually create series
 
@@ -388,18 +404,18 @@ impl Database {
                 &Self::get_series_name(next_series_id),
                 PartitionCreateOptions::default()
                     // TODO: hyper_mode: maybe use manual_journal_persist(true),
-                        // TODO: only flush to buffers either on interval or so
-                        .block_size(64_000)
-                        .compression(fjall::CompressionType::Lz4),
-                )?;
+                    // TODO: only flush to buffers either on interval or so
+                    .block_size(64_000)
+                    .compression(fjall::CompressionType::Lz4),
+            )?;
 
-                series_lock.insert(
-                    next_series_id,
-                    Series {
-                        id: next_series_id,
-                        inner: partition.inner().clone(),
-                    },
-                );
+            series_lock.insert(
+                next_series_id,
+                Series {
+                    id: next_series_id,
+                    inner: partition.inner().clone(),
+                },
+            );
 
             drop(series_lock);
 
@@ -418,7 +434,7 @@ impl Database {
 
             tx.commit()?;
 
-                // NOTE: Get inner because we don't want to insert and read series data in a transactional context
+            // NOTE: Get inner because we don't want to insert and read series data in a transactional context
             Series {
                 id: next_series_id,
                 inner: partition.inner().clone(),
