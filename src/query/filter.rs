@@ -2,7 +2,6 @@ use crate::query::lexer::{self, tokenize_filter_query};
 use crate::smap::SeriesMapping;
 use crate::{tag_index::TagIndex, SeriesId};
 use std::collections::VecDeque;
-use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Tag<'a> {
@@ -52,50 +51,21 @@ pub fn intersection(vecs: &[Vec<u64>]) -> Vec<u64> {
         return vec![];
     }
 
-    // NOTE: Short-circuit
     if vecs.iter().any(Vec::is_empty) {
         return vec![];
     }
 
-    let mut heap = BinaryHeap::new();
-
-    for (i, vec) in vecs.iter().enumerate() {
-        if !vec.is_empty() {
-            heap.push(Reverse((vec[0], i, 0)));
-        }
-    }
-
+    let first_vec = &vecs[0];
     let mut result = Vec::new();
-    let mut current_min: Option<u64> = None;
-    let mut count = 0;
 
-    while let Some(Reverse((value, vec_index, elem_index))) = heap.pop() {
-        if Some(value) != current_min {
-            if count == vecs.len() {
-                result.push(current_min.unwrap());
+    'outer: for &elem in first_vec {
+        for vec in &vecs[1..] {
+            if !vec.contains(&elem) {
+                continue 'outer;
             }
-            current_min = Some(value);
-            count = 1;
-        } else {
-            count += 1;
         }
 
-        let next_elem_index = elem_index + 1;
-        if next_elem_index < vecs[vec_index].len() {
-            heap.push(Reverse((
-                vecs[vec_index][next_elem_index],
-                vec_index,
-                next_elem_index,
-            )));
-        }
-
-        if heap.is_empty() || heap.peek().unwrap().0 .0 != value {
-            if count == vecs.len() {
-                result.push(value);
-            }
-            current_min = None;
-            count = 0;
-        }
+        result.push(elem);
     }
 
     result

@@ -1,4 +1,4 @@
-use crate::{SeriesId, Value};
+use crate::db::StreamItem;
 use std::collections::BinaryHeap;
 
 #[derive(Debug)]
@@ -28,25 +28,18 @@ macro_rules! fail_iter {
     ($e:expr) => {
         match $e {
             Ok(v) => v,
-            Err(e) => return Some(Err(fjall::Error::from(e))),
+            Err(e) => return Some(Err(crate::Error::from(e))),
         }
     };
 }
 
-#[derive(Debug)]
-pub struct StreamItem {
-    pub series_id: SeriesId,
-    pub ts: u128,
-    pub value: Value,
-}
-
-pub struct Merger<I: Iterator<Item = fjall::Result<StreamItem>>> {
+pub struct Merger<I: Iterator<Item = crate::Result<StreamItem>>> {
     readers: Vec<I>,
     heap: BinaryHeap<HeapItem>,
     is_initialized: bool,
 }
 
-impl<I: Iterator<Item = fjall::Result<StreamItem>>> Merger<I> {
+impl<I: Iterator<Item = crate::Result<StreamItem>>> Merger<I> {
     pub fn new(readers: Vec<I>) -> Self {
         Self {
             readers,
@@ -55,7 +48,7 @@ impl<I: Iterator<Item = fjall::Result<StreamItem>>> Merger<I> {
         }
     }
 
-    fn advance(&mut self, idx: usize) -> fjall::Result<()> {
+    fn advance(&mut self, idx: usize) -> crate::Result<()> {
         if let Some(item) = self.readers.get_mut(idx).unwrap().next() {
             self.heap.push(HeapItem(idx, item?));
         }
@@ -63,8 +56,8 @@ impl<I: Iterator<Item = fjall::Result<StreamItem>>> Merger<I> {
     }
 }
 
-impl<I: Iterator<Item = fjall::Result<StreamItem>>> Iterator for Merger<I> {
-    type Item = fjall::Result<StreamItem>;
+impl<I: Iterator<Item = crate::Result<StreamItem>>> Iterator for Merger<I> {
+    type Item = crate::Result<StreamItem>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.is_initialized {
@@ -74,7 +67,7 @@ impl<I: Iterator<Item = fjall::Result<StreamItem>>> Iterator for Merger<I> {
             self.is_initialized = true;
         }
 
-        let mut head = self.heap.pop()?;
+        let head = self.heap.pop()?;
 
         fail_iter!(self.advance(head.0));
 

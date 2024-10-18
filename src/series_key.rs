@@ -1,6 +1,6 @@
 use crate::TagSet;
 
-pub struct SeriesKey(String);
+pub struct SeriesKey;
 
 impl SeriesKey {
     #[doc(hidden)]
@@ -29,16 +29,12 @@ impl SeriesKey {
         }
     }
 
-    pub fn new(metric: &str, tags: &TagSet) -> Self {
+    pub fn new(metric: &str, tags: &TagSet) -> String {
         let mut str = Self::allocate_string_for_tags(tags, metric.len() + 1);
         str.push_str(metric);
         str.push('#');
         Self::join_tags(&mut str, tags);
-        Self(str)
-    }
-
-    pub fn into_inner(self) -> String {
-        self.0
+        str
     }
 }
 
@@ -51,7 +47,7 @@ mod tests {
     fn create_series_key() {
         assert_eq!(
             "cpu.total#service:web",
-            SeriesKey::new("cpu.total", tagset!("service" => "web")).into_inner()
+            SeriesKey::new("cpu.total", tagset!("service" => "web")),
         );
     }
 
@@ -64,9 +60,8 @@ mod tests {
                 tagset!(
                         "service" => "web",
                         "host" => "i-187",
-                )
-            )
-            .into_inner()
+                ),
+            ),
         );
     }
 
@@ -80,9 +75,8 @@ mod tests {
                     "service" => "web",
                     "host" => "i-187",
                     "env" => "dev"
-                )
-            )
-            .into_inner()
+                ),
+            ),
         );
     }
 }

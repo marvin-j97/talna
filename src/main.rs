@@ -78,10 +78,11 @@ fn main() -> fjall::Result<()> {
         let buckets = db
             .avg(metric_name, "host")
             .filter(filter_expr)
-            //.bucket(100_000)
+            // .bucket(u128::MAX)
             //.start(1_000_000_000)
             //.start(now - 1_500_000_000)
-            .run()?;
+            .build()?
+            .collect()?;
 
         log::info!("done in {:?}", start.elapsed());
 

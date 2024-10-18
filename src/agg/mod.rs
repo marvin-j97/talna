@@ -1,9 +1,21 @@
-pub(crate) mod avg;
-pub(crate) mod sum;
+mod avg;
+mod builder;
+mod count;
+mod max;
+mod min;
+mod stream;
+mod sum;
 
 use crate::Value;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+pub use avg::Average;
+pub use builder::Builder;
+pub use count::Count;
+pub use max::Max;
+pub use min::Min;
+pub use sum::Sum;
+
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Bucket {
     pub start: u128,
     pub end: u128,

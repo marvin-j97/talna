@@ -51,14 +51,15 @@
 //!     ),
 //! )?;
 //!
-//! let buckets = db
+//! let grouped_timeseries = db
 //!   .avg(/* metric */ "cpu.total", /* group by tag */ "host")
 //!   .filter("env:prod AND service:db")
 //!   // use .start() and .end() to set the time bounds
 //!   // use .bucket() to set the granularity (bucket width in nanoseconds)
-//!   .run()?;
+//!   .build()?
+//!   .collect()?;
 //!
-//! println!("{buckets:#?}");
+//! println!("{grouped_timeseries:#?}");
 //!
 //! # Ok::<(), talna::Error>(())
 //! ```
@@ -66,6 +67,7 @@
 mod agg;
 mod db;
 // mod merge;
+mod merge;
 
 #[doc(hidden)]
 pub mod query;

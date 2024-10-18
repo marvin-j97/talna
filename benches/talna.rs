@@ -116,7 +116,9 @@ fn avg(c: &mut Criterion) {
         b.iter(|| {
             db.avg("cpu", "host")
                 .filter("service:db AND env:prod")
-                .run()
+                .build()
+                .unwrap()
+                .collect()
                 .unwrap();
         });
     });
@@ -181,7 +183,9 @@ fn avg(c: &mut Criterion) {
         b.iter(|| {
             db.avg("cpu", "host")
                 .filter("service:db AND env:prod")
-                .run()
+                .build()
+                .unwrap()
+                .collect()
                 .unwrap();
         });
     });
