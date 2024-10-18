@@ -1,6 +1,6 @@
 use logos::Logos;
 
-#[derive(Logos, Debug, PartialEq)]
+#[derive(Logos, Debug, PartialEq, Eq)]
 #[logos(skip r"[ \r\t\n\f]+")] // Ignore this regex pattern between tokens
 pub enum Token<'a> {
     #[token("!")]

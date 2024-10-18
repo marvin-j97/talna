@@ -27,7 +27,7 @@ impl<'a> std::fmt::Display for Node<'a> {
                 "({})",
                 nodes
                     .iter()
-                    .map(|x| x.to_string())
+                    .map(ToString::to_string)
                     .collect::<Vec<_>>()
                     .join(" AND ")
             ),
@@ -36,7 +36,7 @@ impl<'a> std::fmt::Display for Node<'a> {
                 "({})",
                 nodes
                     .iter()
-                    .map(|x| x.to_string())
+                    .map(ToString::to_string)
                     .collect::<Vec<_>>()
                     .join(" OR ")
             ),
@@ -71,14 +71,15 @@ pub fn intersection(vecs: &[Vec<u64>]) -> Vec<u64> {
     result
 }
 
+#[must_use]
 pub fn union(vecs: &[Vec<u64>]) -> Vec<u64> {
     let mut result = vec![];
 
     for vec in vecs {
-        result.extend(vec)
+        result.extend(vec);
     }
 
-    result.sort();
+    result.sort_unstable();
     result.dedup();
 
     result
@@ -123,7 +124,7 @@ impl<'a> Node<'a> {
                 }
 
                 let mut ids = ids.into_iter().collect::<Vec<_>>();
-                ids.sort();
+                ids.sort_unstable();
 
                 Ok(ids)
             }
@@ -141,6 +142,7 @@ pub enum Item<'a> {
     ParanClose,
 }
 
+#[doc(hidden)]
 pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
     if s.trim() == "*" {
         return Ok(Node::AllStar);

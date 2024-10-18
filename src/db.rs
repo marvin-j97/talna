@@ -13,6 +13,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::{collections::BTreeMap, ops::Bound, path::Path, sync::RwLock};
 
+/// A list of tags.
 pub type TagSet<'a> = [(&'a str, &'a str)];
 
 const METRICS_NAME_CHARS: &str = "abcdefghijklmnopqrstuvwxyz_.";
@@ -45,6 +46,7 @@ pub struct SeriesStream {
     pub(crate) reader: Box<dyn Iterator<Item = fjall::Result<StreamItem>>>,
 }
 
+/// An embeddable time series database.
 pub struct Database {
     pub(crate) keyspace: TxKeyspace,
     series: RwLock<BTreeMap<SeriesId, Series>>,
@@ -289,6 +291,7 @@ impl Database {
         }
     }
 
+    /// Write a data point to the database for the given metric, and tags it accordingly.
     pub fn write(&self, metric: &str, value: Value, tags: &TagSet) -> fjall::Result<()> {
         self.write_at(metric, timestamp(), value, tags)
     }
@@ -353,6 +356,8 @@ impl Database {
                 let partition = self.keyspace.open_partition(
                     &Self::get_series_name(next_series_id),
                     PartitionCreateOptions::default()
+                        // TODO: hyper_mode: maybe use manual_journal_persist(true),
+                        // TODO: only flush to buffers either on interval or so
                         .block_size(64_000)
                         .compression(fjall::CompressionType::Lz4),
                 )?;

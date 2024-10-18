@@ -1,9 +1,11 @@
 use crate::TagSet;
 
+#[doc(hidden)]
 pub struct SeriesKey;
 
 impl SeriesKey {
     #[doc(hidden)]
+    #[must_use]
     pub fn allocate_string_for_tags(tags: &TagSet, extra_len: usize) -> String {
         let total_len = tags
             .iter()
@@ -29,6 +31,7 @@ impl SeriesKey {
         }
     }
 
+    #[must_use]
     pub fn format(metric: &str, tags: &TagSet) -> String {
         let mut str = Self::allocate_string_for_tags(tags, metric.len() + 1);
         str.push_str(metric);

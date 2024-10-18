@@ -64,6 +64,18 @@
 //! # Ok::<(), talna::Error>(())
 //! ```
 
+// #![doc(html_logo_url = "https://raw.githubusercontent.com/fjall-rs/fjall/main/logo.png")]
+// #![doc(html_favicon_url = "https://raw.githubusercontent.com/fjall-rs/fjall/main/logo.png")]
+#![forbid(unsafe_code)]
+#![deny(clippy::all, missing_docs, clippy::cargo)]
+// #![deny(clippy::unwrap_used)]
+// #![deny(clippy::indexing_slicing)]
+#![warn(clippy::pedantic, clippy::nursery)]
+#![warn(clippy::expect_used)]
+#![allow(clippy::missing_const_for_fn)]
+#![warn(clippy::multiple_crate_versions)]
+#![warn(clippy::result_unit_err)]
+
 mod agg;
 mod db;
 // mod merge;
@@ -89,17 +101,31 @@ pub use time::timestamp;
 #[doc(hidden)]
 pub use series_key::SeriesKey;
 
+/// Value used in time series
 #[cfg(feature = "high_precision")]
 pub type Value = f64;
 
+/// Value used in time series
 #[cfg(not(feature = "high_precision"))]
 pub type Value = f32;
 
+/// Error type
 // TODO: custom error
 pub type Error = fjall::Error;
 
+/// Result helper type
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Macro to create a list of tags.
+///
+/// # Examples
+///
+/// ```
+/// tagset!(
+///   "service" => "db",
+///   "env" => "production",
+/// )
+/// ```
 #[macro_export]
 macro_rules! tagset {
   ($($k:expr => $v:expr),* $(,)?) => {{

@@ -94,6 +94,7 @@ impl<'a, A: Aggregation + Clone> Builder<'a, A> {
         self
     }
 
+    #[allow(clippy::option_if_let_else)]
     pub fn build(self) -> crate::Result<GroupedAggregation<'a, A>> {
         use std::ops::Bound;
 
