@@ -78,7 +78,7 @@
 
 mod agg;
 mod db;
-// mod merge;
+mod duration;
 mod merge;
 
 #[doc(hidden)]
@@ -94,6 +94,7 @@ type SeriesId = u64;
 type HashMap<K, V> = std::collections::HashMap<K, V, rustc_hash::FxBuildHasher>;
 
 pub use db::{Database, TagSet};
+pub use duration::Duration;
 
 #[doc(hidden)]
 pub use time::timestamp;
