@@ -73,6 +73,7 @@
 #![warn(clippy::result_unit_err)]
 
 mod agg;
+mod constants;
 mod db;
 mod duration;
 mod error;
@@ -90,10 +91,13 @@ mod time;
 type SeriesId = u64;
 type HashMap<K, V> = std::collections::HashMap<K, V, rustc_hash::FxBuildHasher>;
 
-pub use db::{Database, TagSet};
+pub use db::Database;
 pub use duration::Duration;
 pub use error::{Error, Result};
 pub use time::timestamp;
+
+/// A list of tags.
+pub type TagSet<'a> = [(&'a str, &'a str)];
 
 #[doc(hidden)]
 pub use series_key::SeriesKey;

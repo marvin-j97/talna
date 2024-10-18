@@ -1,3 +1,5 @@
+use crate::constants::METRICS_NAME_CHARS;
+use crate::constants::MINUTE_IN_NS;
 use crate::query::filter::parse_filter_query;
 use crate::series_key::SeriesKey;
 use crate::smap::SeriesMapping;
@@ -5,6 +7,7 @@ use crate::tag_index::TagIndex;
 use crate::tag_sets::TagSets;
 use crate::time::timestamp;
 use crate::SeriesId;
+use crate::TagSet;
 use crate::Value;
 use byteorder::{BigEndian, ReadBytesExt};
 use fjall::{BlockCache, Partition, PartitionCreateOptions, TxKeyspace};
@@ -26,13 +29,6 @@ pub enum Mode {
     /// Write become faster by skipping the `write()` syscall to OS buffers.
     Speedy,
 } */
-
-/// A list of tags.
-pub type TagSet<'a> = [(&'a str, &'a str)];
-
-const METRICS_NAME_CHARS: &str = "abcdefghijklmnopqrstuvwxyz_.";
-
-const MINUTE_IN_NS: u128 = 60_000_000_000;
 
 #[derive(Clone)]
 pub struct Series {
@@ -335,10 +331,9 @@ impl Database {
         value: Value,
         tags: &TagSet,
     ) -> crate::Result<()> {
-        assert!(
-            metric.chars().all(|c| METRICS_NAME_CHARS.contains(c)),
-            "oops"
-        );
+        if metric.chars().any(|c| !METRICS_NAME_CHARS.contains(c)) {
+            return Err(crate::Error::InvalidMetricName);
+        }
 
         let series_key = SeriesKey::format(metric, tags);
         let series_id: Option<u64> = self.0.smap.get(&series_key)?;

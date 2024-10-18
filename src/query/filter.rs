@@ -145,7 +145,7 @@ pub enum Item<'a> {
 }
 
 #[doc(hidden)]
-pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
+pub fn parse_filter_query(s: &str) -> Result<Node, crate::Error> {
     if s.trim() == "*" {
         return Ok(Node::AllStar);
     }
@@ -154,7 +154,9 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
     let mut op_stack = VecDeque::new();
 
     for tok in tokenize_filter_query(s) {
-        let tok = tok?;
+        let Ok(tok) = tok else {
+            return Err(crate::Error::InvalidQuery);
+        };
 
         match tok {
             lexer::Token::Identifier(id) => {
@@ -214,11 +216,11 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
                 }
 
                 let Some(top) = op_stack.pop_back() else {
-                    return Err(());
+                    return Err(crate::Error::InvalidQuery);
                 };
 
                 if !matches!(top, Item::ParanOpen) {
-                    return Err(());
+                    return Err(crate::Error::InvalidQuery);
                 }
             }
         }
@@ -226,7 +228,7 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
 
     while let Some(top) = op_stack.pop_back() {
         if matches!(top, Item::ParanOpen) {
-            return Err(());
+            return Err(crate::Error::InvalidQuery);
         }
         output_queue.push_back(top);
     }
@@ -240,30 +242,30 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
             }
             Item::And => {
                 let Some(b) = buf.pop() else {
-                    return Err(());
+                    return Err(crate::Error::InvalidQuery);
                 };
                 let Some(a) = buf.pop() else {
-                    return Err(());
+                    return Err(crate::Error::InvalidQuery);
                 };
                 buf.push(Node::And(vec![a, b]));
             }
             Item::Or => {
                 let Some(b) = buf.pop() else {
-                    return Err(());
+                    return Err(crate::Error::InvalidQuery);
                 };
                 let Some(a) = buf.pop() else {
-                    return Err(());
+                    return Err(crate::Error::InvalidQuery);
                 };
                 buf.push(Node::Or(vec![a, b]));
             }
             Item::Not => {
                 let Some(a) = buf.pop() else {
-                    return Err(());
+                    return Err(crate::Error::InvalidQuery);
                 };
                 buf.push(Node::Not(Box::new(a)));
             }
-            Item::ParanOpen => return Err(()),
-            Item::ParanClose => return Err(()),
+            Item::ParanOpen => return Err(crate::Error::InvalidQuery),
+            Item::ParanClose => return Err(crate::Error::InvalidQuery),
         }
     }
 
@@ -273,35 +275,36 @@ pub fn parse_filter_query(s: &str) -> Result<Node, ()> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
     #[test_log::test]
     fn test_parse_filter_query_1() {
         assert_eq!(
-            Ok(Node::Eq(Tag {
+            Node::Eq(Tag {
                 key: "hello",
                 value: "world"
-            })),
-            parse_filter_query("hello:world")
+            }),
+            parse_filter_query("hello:world").unwrap()
         );
     }
 
     #[test_log::test]
     fn test_parse_filter_query_2() {
         assert_eq!(
-            Ok(Node::Not(Box::new(Node::Eq(Tag {
+            Node::Not(Box::new(Node::Eq(Tag {
                 key: "hello",
                 value: "world"
-            })))),
-            parse_filter_query("!hello:world")
+            }))),
+            parse_filter_query("!hello:world").unwrap()
         );
     }
 
     #[test_log::test]
     fn test_parse_filter_query_3() {
         assert_eq!(
-            Ok(Node::Not(Box::new(Node::Or(vec![
+            Node::Not(Box::new(Node::Or(vec![
                 Node::Eq(Tag {
                     key: "hello",
                     value: "world"
@@ -310,8 +313,8 @@ mod tests {
                     key: "hallo",
                     value: "welt"
                 }),
-            ])))),
-            parse_filter_query("!(hello:world OR hallo:welt)")
+            ]))),
+            parse_filter_query("!(hello:world OR hallo:welt)").unwrap()
         );
     }
 
