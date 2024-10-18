@@ -1,4 +1,49 @@
 /// Helpers for calculating durations
+///
+/// ```
+/// # let path = std::path::Path::new(".testy2");
+/// # if path.try_exists()? {
+/// #   std::fs::remove_dir_all(path)?;
+/// # }
+/// #
+/// # use talna::{Database, Duration, tagset, timestamp};
+/// #
+/// # let db = Database::new(path, /* cache size in MiB */ 64)?;
+/// #
+/// db.write(
+///     "cpu.total", // metric name
+///     25.42, // actual value (float)
+///     tagset!(
+///         "env" => "prod",
+///         "service" => "db",
+///         "host" => "h-1",
+///     ),
+/// )?;
+///
+/// db.write(
+///     "cpu.total", // metric name
+///     42.42, // actual value (float)
+///     tagset!(
+///         "env" => "prod",
+///         "service" => "db",
+///         "host" => "h-2",
+///     ),
+/// )?;
+///
+/// let now = timestamp();
+///
+/// let grouped_timeseries = db
+///   .avg(/* metric */ "cpu.total", /* group by tag */ "host")
+///   .filter("env:prod AND service:db")
+///   .start(now - Duration::minutes(15))
+///   .granularity(Duration::minutes(1))
+///   .build()?
+///   .collect()?;
+///
+/// println!("{grouped_timeseries:#?}");
+///
+/// # Ok::<(), talna::Error>(())
+/// ```
 pub struct Duration;
 
 impl Duration {

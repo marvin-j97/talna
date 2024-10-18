@@ -71,7 +71,7 @@ pub struct Builder<'a, A: Aggregation + Clone> {
 
 impl<'a, A: Aggregation + Clone> Builder<'a, A> {
     /// Bucket "width" in nanoseconds
-    pub fn bucket(mut self, bucket: u128) -> Self {
+    pub fn granularity(mut self, bucket: u128) -> Self {
         self.bucket_width = bucket;
         self
     }

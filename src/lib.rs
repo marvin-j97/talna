@@ -23,10 +23,6 @@
 //! #   std::fs::remove_dir_all(path)?;
 //! # }
 //! #
-//! # fn timestamp() -> u128 {
-//! #     0
-//! # }
-//! #
 //! use talna::{Database, tagset};
 //!
 //! let db = Database::new(path, /* cache size in MiB */ 64)?;
@@ -55,7 +51,7 @@
 //!   .avg(/* metric */ "cpu.total", /* group by tag */ "host")
 //!   .filter("env:prod AND service:db")
 //!   // use .start() and .end() to set the time bounds
-//!   // use .bucket() to set the granularity (bucket width in nanoseconds)
+//!   // use .granularity() to set the granularity (bucket width in nanoseconds)
 //!   .build()?
 //!   .collect()?;
 //!
@@ -96,7 +92,6 @@ type HashMap<K, V> = std::collections::HashMap<K, V, rustc_hash::FxBuildHasher>;
 pub use db::{Database, TagSet};
 pub use duration::Duration;
 
-#[doc(hidden)]
 pub use time::timestamp;
 
 #[doc(hidden)]
@@ -122,10 +117,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// # Examples
 ///
 /// ```
-/// tagset!(
+/// use talna::{tagset, TagSet};
+///
+/// let tags: &TagSet = tagset!(
 ///   "service" => "db",
 ///   "env" => "production",
-/// )
+/// );
 /// ```
 #[macro_export]
 macro_rules! tagset {
