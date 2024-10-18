@@ -46,14 +46,17 @@ pub struct SeriesStream {
     pub(crate) reader: Box<dyn Iterator<Item = fjall::Result<StreamItem>>>,
 }
 
-/// An embeddable time series database.
-pub struct Database {
+pub struct DatabaseInner {
     pub(crate) keyspace: TxKeyspace,
     series: RwLock<BTreeMap<SeriesId, Series>>,
     smap: SeriesMapping,
     tag_index: TagIndex,
     pub(crate) tag_sets: TagSets,
 }
+
+/// An embeddable time series database.
+#[derive(Clone)]
+pub struct Database(Arc<DatabaseInner>);
 
 // TODO: series should be stored in FIFO... but FIFO should not cause write stalls
 // if disjoint...
@@ -62,6 +65,10 @@ impl Database {
     /// Uses an existing `fjall` keyspace to open a time series database.
     ///
     /// Partitions are prefixed with `_talna#` to avoid name clashes with other applications.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if an I/O error occured.
     pub fn from_keyspace(keyspace: TxKeyspace) -> fjall::Result<Self> {
         let tag_index = TagIndex::new(&keyspace)?;
         let tag_sets = TagSets::new(&keyspace)?;
@@ -94,19 +101,23 @@ impl Database {
             series_map.insert(series_id, series);
         }
 
-        Ok(Self {
+        Ok(Self(Arc::new(DatabaseInner {
             keyspace,
             series: RwLock::new(series_map),
             smap: series_mapping,
             tag_index,
             tag_sets,
-        })
+        })))
     }
 
     /// Opens a new time series database.
     ///
     /// If you have a keyspace already in your application, you probably
-    /// want to use [`Database::from_keyspace`] instead
+    /// want to use [`Database::from_keyspace`] instead.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if an I/O error occured.
     pub fn new<P: AsRef<Path>>(path: P, cache_mib: u64) -> fjall::Result<Self> {
         let keyspace = fjall::Config::new(path)
             .block_cache(Arc::new(BlockCache::with_capacity_bytes(
@@ -132,20 +143,14 @@ impl Database {
             min.map(|x| u128::to_be_bytes(!x)),
         );
 
-        let lock = self.series.read().expect("lock is poisoned");
+        let lock = self.0.series.read().expect("lock is poisoned");
 
-        let readers = series_ids
+        series_ids
             .iter()
             .map(|id| lock.get(id).cloned().expect("series should exist"))
-            .collect::<Vec<_>>();
-
-        drop(lock);
-
-        readers
-            .into_iter()
             .map(|series| {
                 // TODO: maybe cache tagsets in Arc<HashMap> ...
-                let tags = self.tag_sets.get(series.id)?;
+                let tags = self.0.tag_sets.get(series.id)?;
 
                 Ok(SeriesStream {
                     // series_id: series.id,
@@ -187,7 +192,7 @@ impl Database {
         // TODO: crate::Error with InvalidQuery enum variant
         let filter = parse_filter_query(filter_expr).expect("filter should be valid");
 
-        let series_ids = filter.evaluate(&self.smap, &self.tag_index, metric)?;
+        let series_ids = filter.evaluate(&self.0.smap, &self.0.tag_index, metric)?;
         if series_ids.is_empty() {
             log::debug!("Query did not match any series");
             return Ok(vec![]);
@@ -203,6 +208,7 @@ impl Database {
     }
 
     /// Returns the average value for each bucket.
+    #[must_use]
     pub fn avg<'a>(
         &'a self,
         metric: &'a str,
@@ -221,6 +227,7 @@ impl Database {
     }
 
     /// Returns the sum of the values of each bucket.
+    #[must_use]
     pub fn sum<'a>(
         &'a self,
         metric: &'a str,
@@ -239,6 +246,7 @@ impl Database {
     }
 
     /// Returns the minimum value for each bucket.
+    #[must_use]
     pub fn min<'a>(
         &'a self,
         metric: &'a str,
@@ -257,6 +265,7 @@ impl Database {
     }
 
     /// Returns the maximum value for each bucket.
+    #[must_use]
     pub fn max<'a>(
         &'a self,
         metric: &'a str,
@@ -275,6 +284,7 @@ impl Database {
     }
 
     /// Counts data points (ignores their value) per bucket.
+    #[must_use]
     pub fn count<'a>(
         &'a self,
         metric: &'a str,
@@ -293,6 +303,10 @@ impl Database {
     }
 
     /// Write a data point to the database for the given metric, and tags it accordingly.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if an I/O error occured.
     pub fn write(&self, metric: &str, value: Value, tags: &TagSet) -> fjall::Result<()> {
         self.write_at(metric, timestamp(), value, tags)
     }
@@ -311,12 +325,12 @@ impl Database {
         );
 
         let series_key = SeriesKey::format(metric, tags);
-        let series_id: Option<u64> = self.smap.get(&series_key)?;
+        let series_id: Option<u64> = self.0.smap.get(&series_key)?;
 
         let series = if let Some(series_id) = series_id {
             // NOTE: Series already exists (happy path)
-
-            self.series
+            self.0
+                .series
                 .read()
                 .expect("lock is poisoned")
                 .get(&series_id)
@@ -324,41 +338,56 @@ impl Database {
                 .expect("series should exist")
         } else {
             // NOTE: Create series
-            //
-            // We need to run in a transaction (for serializability)
-            //
-            // Because we cannot rely on the series not being created since the
-            // start of the function, we need to again look it up inside the transaction
-            // to really make sure
+            self.initialize_new_series(&series_key, metric, tags)?
+        };
 
-            let mut tx = self.keyspace.write_tx();
+        // NOTE: Invert timestamp to store in reverse order
+        // because forward iteration is faster
+        series.insert(ts, value)?;
 
-            let series_id = tx.get(&self.smap.partition, &series_key)?.map(|bytes| {
-                let mut reader = &bytes[..];
-                reader.read_u64::<BigEndian>().expect("should deserialize")
-            });
+        Ok(())
+    }
 
-            if let Some(series_id) = series_id {
-                // NOTE: Series was created since the start of the function
+    fn initialize_new_series(
+        &self,
+        series_key: &str,
+        metric: &str,
+        tags: &TagSet,
+    ) -> crate::Result<Series> {
+        // NOTE: We need to run in a transaction (for serializability)
+        //
+        // Because we cannot rely on the series not being created since the
+        // start of the function, we need to again look it up inside the transaction
+        // to really make sure
+        let mut tx = self.0.keyspace.write_tx();
 
-                self.series
-                    .read()
-                    .expect("lock is poisoned")
-                    .get(&series_id)
+        let series_id = tx.get(&self.0.smap.partition, series_key)?.map(|bytes| {
+            let mut reader = &bytes[..];
+            reader.read_u64::<BigEndian>().expect("should deserialize")
+        });
+
+        let series = if let Some(series_id) = series_id {
+            // NOTE: Series was created since the start of the function
+
+            self.0
+                .series
+                .read()
+                .expect("lock is poisoned")
+                .get(&series_id)
                     .cloned()
                     .expect("series should exist")
-            } else {
-                // NOTE: Actually create series
+        } else {
+            // NOTE: Actually create series
 
-                let mut series_lock = self.series.write().expect("lock is poisoned");
-                let next_series_id = series_lock.keys().max().map(|x| x + 1).unwrap_or_default();
+            let mut series_lock = self.0.series.write().expect("lock is poisoned");
+            let next_series_id = series_lock.keys().max().map(|x| x + 1).unwrap_or_default();
 
-                log::trace!("Creating series {next_series_id} for permutation {series_key:?}");
+            log::trace!("Creating series {next_series_id} for permutation {series_key:?}");
 
-                let partition = self.keyspace.open_partition(
-                    &Self::get_series_name(next_series_id),
-                    PartitionCreateOptions::default()
-                        // TODO: hyper_mode: maybe use manual_journal_persist(true),
+            let partition = self.0.keyspace.open_partition(
+                &Self::get_series_name(next_series_id),
+                PartitionCreateOptions::default()
+                    // TODO: hyper_mode: maybe use manual_journal_persist(true),
                         // TODO: only flush to buffers either on interval or so
                         .block_size(64_000)
                         .compression(fjall::CompressionType::Lz4),
@@ -372,34 +401,31 @@ impl Database {
                     },
                 );
 
-                drop(series_lock);
+            drop(series_lock);
 
-                self.smap.insert(&mut tx, &series_key, next_series_id);
+            self.0.smap.insert(&mut tx, series_key, next_series_id);
 
-                self.tag_index
-                    .index(&mut tx, metric, tags, next_series_id)?;
+            self.0
+                .tag_index
+                .index(&mut tx, metric, tags, next_series_id)?;
 
-                let mut serialized_tag_set = SeriesKey::allocate_string_for_tags(tags, 0);
-                SeriesKey::join_tags(&mut serialized_tag_set, tags);
+            let mut serialized_tag_set = SeriesKey::allocate_string_for_tags(tags, 0);
+            SeriesKey::join_tags(&mut serialized_tag_set, tags);
 
-                self.tag_sets
-                    .insert(&mut tx, next_series_id, &serialized_tag_set);
+            self.0
+                .tag_sets
+                .insert(&mut tx, next_series_id, &serialized_tag_set);
 
-                tx.commit()?;
+            tx.commit()?;
 
                 // NOTE: Get inner because we don't want to insert and read series data in a transactional context
-                Series {
-                    id: next_series_id,
-                    inner: partition.inner().clone(),
-                }
+            Series {
+                id: next_series_id,
+                inner: partition.inner().clone(),
             }
         };
 
-        // NOTE: Invert timestamp to store in reverse order
-        // because forward iteration is faster
-        series.insert(ts, value)?;
-
-        Ok(())
+        Ok(series)
     }
 }
 
