@@ -14,22 +14,26 @@ Icelandic, Old Norse: Numbers
 
 A simple, embeddable time series database.
 
-It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine,
-being able to ingest ~700k data points per second.
+## About
 
-The LSM-based storage engine causes no degradation in write ingestion speed, even for large datasets,
-has low write amplification (good for SSDs) and compresses the on-disk data (again, good for SSDs).
+It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine, allowing around ~700k data points per second to be ingested.
+
+With the storage engine being LSM-based, there's no degradation in write ingestion speed (even for datasets much larger than RAM), low write amplification (good for SSDs) and on-disk data is compressed (again, good for SSDs).
 
 The tagging and querying mechanism is modelled after Datadog's metrics service (<https://www.datadoghq.com/blog/engineering/timeseries-indexing-at-scale/>).
 
 Data points are f32s by default, but can be switched to f64 using the `high_precision` feature flag.
 
-1 billion data points (default config, jemalloc, i9 11900k):
+## Benchmark: 1 billion data points
+
+Default config, jemalloc, i9 11900k
 
 - ingested in 1374s (~727k inserts per second)
 - average memory usage: 100 MB , peak: ~170 MB
 - query latency for 1 million data points (`AVG | env:prod AND service:db AND (host:h-1 OR host:h-2 OR host:h-3)`): 110ms
 - disk space: 12 GB
+
+## Basic usage
 
 ```rs
 use talna::{Database, MetricNamem, tagset};
