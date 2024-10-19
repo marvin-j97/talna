@@ -46,7 +46,7 @@ fn join_tags(c: &mut Criterion) {
 }
 
 fn create_series_key(c: &mut Criterion) {
-    let metric_name = MetricName::try_from("cpu.0.total").unwrap();
+    let metric_name = MetricName::try_from("cpu.total").unwrap();
 
     let tags = tagset!(
       "service" => "db",
