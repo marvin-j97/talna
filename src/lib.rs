@@ -1,7 +1,7 @@
 //! A simple, embeddable time series database.
 //!
 //! It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine,
-//! being able to ingest ~700k data points per seconds.
+//! being able to ingest ~1M data points per seconds.
 //!
 //! The LSM-based storage engine causes no degradation in write ingestion speed, even for large datasets,
 //! has low write amplification (good for SSDs) and compresses the on-disk data (again, good for SSDs).
@@ -12,10 +12,27 @@
 //!
 //! 1 billion data points (default config, jemalloc, i9 11900k):
 //!
-//! - ingested in 1374s (~727k inserts per second)
-//! - average memory usage: 100 MB , peak: ~170 MB
-//! - query latency for 1 million data points (`AVG | env:prod AND service:db AND (host:h-1 OR host:h-2 OR host:h-3)`): 110ms
-//! - disk space: 12 GB
+//! Default config, jemalloc, i9 11900k:
+//!
+//! ```
+//! ingested 1 billion in 1191s
+//! write speed: 839630 writes per second
+//! peak mem: 177 MiB
+//! disk space: 10 GiB
+//! query [1M latest data points] in 135ms
+//! reopened DB in 353ms
+//! ```
+//!
+//! Hyper mode, jemalloc, i9 11900k:
+//!
+//! ```
+//! ingested 1 billion in 638s
+//! write speed: 1567398 writes per second
+//! peak mem: 188 MiB
+//! disk space: 10 GiB
+//! query [1M latest data points] in 131ms
+//! reopened DB in 350ms
+//! ```
 //!
 //! ```
 //! # let path = std::path::Path::new(".testy");
