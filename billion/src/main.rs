@@ -26,7 +26,13 @@ fn main() -> talna::Result<()> {
     }
 
     let mut rng = rand::thread_rng();
+
+    let start = Instant::now();
+
     let db = Database::new(path, 128)?;
+
+    log::info!("opened DB in {:?}", start.elapsed());
+
     let metric_name = MetricName::try_from("cpu.total").unwrap();
 
     let max_memory_bytes = Arc::new(AtomicU64::new(0));

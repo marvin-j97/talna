@@ -29,11 +29,12 @@ Data points are f32s by default, but can be switched to f64 using the `high_prec
 Default config, jemalloc, i9 11900k
 
 ```
-ingested 1 billion in 1191.66s
-write latency per item: 1191ns
-write speed: 839630 WPS
+ingested 1 billion in 1191s
+write speed: 839630 writes per second
 peak mem: 177 MiB
 disk space: 10 GiB
+query [1M latest data points] in 135ms
+reopened DB in 353ms
 ```
 
 ## Basic usage
