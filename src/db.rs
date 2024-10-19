@@ -29,7 +29,7 @@ pub enum Mode {
     Speedy,
 } */
 
-pub(crate) const MINUTE_IN_NS: u128 = 60_000_000_000;
+pub const MINUTE_IN_NS: u128 = 60_000_000_000;
 
 #[derive(Clone)]
 pub struct Series {
