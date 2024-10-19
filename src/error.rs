@@ -9,11 +9,6 @@ pub enum Error {
 
     /// An invalid filter query was used.
     InvalidQuery,
-
-    /// An invalid metric name was used.
-    ///
-    /// Characters supported: a-z A-Z 0-9 . _
-    InvalidMetricName,
 }
 
 impl From<fjall::Error> for Error {
@@ -39,9 +34,6 @@ impl std::fmt::Display for Error {
             }
             Self::InvalidQuery => {
                 write!(f, "InvalidQuery",)
-            }
-            Self::InvalidMetricName => {
-                write!(f, "InvalidMetricName",)
             }
         }
     }

@@ -32,12 +32,14 @@ Data points are f32s by default, but can be switched to f64 using the `high_prec
 - disk space: 12 GB
 
 ```rs
-use talna::{Database, tagset};
+use talna::{Database, MetricNamem, tagset};
 
 let db = Database::new(path, /* cache size in MiB */ 64)?;
 
+let metric_name = MetricName::try_from("cpu.total").unwrap();
+
 db.write(
-    "cpu.total", // metric name
+    metric_name,
     25.42, // actual value (float)
     tagset!(
         "env" => "prod",
@@ -47,7 +49,7 @@ db.write(
 )?;
 
 db.write(
-    "cpu.total", // metric name
+    metric_name,
     42.42, // actual value (float)
     tagset!(
         "env" => "prod",
@@ -57,7 +59,7 @@ db.write(
 )?;
 
 let buckets = db
-  .avg(/* metric */ "cpu.total", /* group by tag */ "host")
+  .avg(metric_name, /* group by tag */ "host")
   .filter("env:prod AND service:db")
   // use .start() and .end() to set the time bounds
   // use .granularity() to set the granularity (bucket width in nanoseconds)

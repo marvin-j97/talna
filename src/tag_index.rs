@@ -1,4 +1,4 @@
-use crate::{SeriesId, TagSet};
+use crate::{MetricName, SeriesId, TagSet};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use fjall::{CompressionType, PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
 
@@ -42,11 +42,11 @@ impl TagIndex {
     pub fn index(
         &self,
         tx: &mut WriteTransaction,
-        metric: &str,
+        metric: MetricName,
         tags: &TagSet,
         series_id: SeriesId,
     ) -> crate::Result<()> {
-        self.index_term(tx, metric, series_id)?;
+        self.index_term(tx, &metric, series_id)?;
 
         for (key, value) in tags {
             let term = format!("{metric}#{key}:{value}");
@@ -110,7 +110,7 @@ impl TagIndex {
     }
 
     // TODO: read_tx
-    pub fn query_prefix(&self, metric: &str, prefix: &str) -> crate::Result<Vec<SeriesId>> {
+    pub fn query_prefix(&self, metric: MetricName, prefix: &str) -> crate::Result<Vec<SeriesId>> {
         let mut ids = vec![];
 
         for kv in self.partition.inner().prefix(format!("{metric}#{prefix}")) {
@@ -136,6 +136,7 @@ impl TagIndex {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -144,7 +145,7 @@ mod tests {
         let path = tempfile::tempdir()?;
         let keyspace = fjall::Config::new(&path).open_transactional()?;
         let tag_index = TagIndex::new(&keyspace)?;
-        let metric = "cpu.total";
+        let metric = MetricName::try_from("cpu.total").unwrap();
 
         let mut tx = keyspace.write_tx();
 
@@ -197,7 +198,7 @@ mod tests {
         let path = tempfile::tempdir()?;
         let keyspace = fjall::Config::new(&path).open_transactional()?;
         let tag_index = TagIndex::new(&keyspace)?;
-        let metric = "cpu.total";
+        let metric = MetricName::try_from("cpu.total").unwrap();
 
         let mut tx = keyspace.write_tx();
 
@@ -260,7 +261,7 @@ mod tests {
 
         tx.commit()?;
 
-        assert_eq!(vec![0, 1, 2, 3, 4, 5, 6, 7], tag_index.query_eq(metric)?);
+        assert_eq!(vec![0, 1, 2, 3, 4, 5, 6, 7], tag_index.query_eq(&metric)?);
         assert_eq!(
             vec![0, 4],
             tag_index.query_eq(&format!("{metric}#env:prod"))?

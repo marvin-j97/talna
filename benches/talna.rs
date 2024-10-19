@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use talna::tagset;
+use talna::{tagset, MetricName};
 
 fn intersection(c: &mut Criterion) {
     let v = vec![vec![1, 2, 3, 4, 5], vec![1, 3, 5], vec![1, 3]];
@@ -46,6 +46,8 @@ fn join_tags(c: &mut Criterion) {
 }
 
 fn create_series_key(c: &mut Criterion) {
+    let metric_name = MetricName::try_from("cpu.0.total").unwrap();
+
     let tags = tagset!(
       "service" => "db",
       "env" => "prod",
@@ -54,7 +56,7 @@ fn create_series_key(c: &mut Criterion) {
 
     c.bench_function("create series key", |b| {
         b.iter(|| {
-            let _ = talna::SeriesKey::format("cpu.0.total", tags);
+            let _ = talna::SeriesKey::format(metric_name, tags);
         });
     });
 }
@@ -77,6 +79,8 @@ fn parse_filter_query(c: &mut Criterion) {
 }
 
 fn insert_timestamp(c: &mut Criterion) {
+    let metric_name = MetricName::try_from("cpu").unwrap();
+
     c.bench_function("insert single", |b| {
         let tags = tagset!(
             "service" => "db",
@@ -90,13 +94,15 @@ fn insert_timestamp(c: &mut Criterion) {
         let mut ts = 0;
 
         b.iter(|| {
-            db.write_at("cpu", ts, 52.74, tags).unwrap();
+            db.write_at(metric_name, ts, 52.74, tags).unwrap();
             ts += 1;
         });
     });
 }
 
 fn avg(c: &mut Criterion) {
+    let metric_name = MetricName::try_from("cpu").unwrap();
+
     c.bench_function("avg", |b| {
         let dir = tempfile::tempdir().unwrap();
         let db = talna::Database::new(&dir, 64).unwrap();
@@ -107,14 +113,14 @@ fn avg(c: &mut Criterion) {
             "host" => "host-1",
         );
 
-        db.write("cpu", 10.0, tags).unwrap();
-        db.write("cpu", 11.0, tags).unwrap();
-        db.write("cpu", 12.0, tags).unwrap();
-        db.write("cpu", 13.0, tags).unwrap();
-        db.write("cpu", 14.0, tags).unwrap();
+        db.write(metric_name, 10.0, tags).unwrap();
+        db.write(metric_name, 11.0, tags).unwrap();
+        db.write(metric_name, 12.0, tags).unwrap();
+        db.write(metric_name, 13.0, tags).unwrap();
+        db.write(metric_name, 14.0, tags).unwrap();
 
         b.iter(|| {
-            db.avg("cpu", "host")
+            db.avg(metric_name, "host")
                 .filter("service:db AND env:prod")
                 .build()
                 .unwrap()
@@ -134,11 +140,11 @@ fn avg(c: &mut Criterion) {
                 "host" => "host-1",
             );
 
-            db.write("cpu", 10.0, tags).unwrap();
-            db.write("cpu", 11.0, tags).unwrap();
-            db.write("cpu", 12.0, tags).unwrap();
-            db.write("cpu", 13.0, tags).unwrap();
-            db.write("cpu", 14.0, tags).unwrap();
+            db.write(metric_name, 10.0, tags).unwrap();
+            db.write(metric_name, 11.0, tags).unwrap();
+            db.write(metric_name, 12.0, tags).unwrap();
+            db.write(metric_name, 13.0, tags).unwrap();
+            db.write(metric_name, 14.0, tags).unwrap();
         }
         {
             let tags = tagset!(
@@ -147,11 +153,11 @@ fn avg(c: &mut Criterion) {
                 "host" => "host-2",
             );
 
-            db.write("cpu", 10.0, tags).unwrap();
-            db.write("cpu", 11.0, tags).unwrap();
-            db.write("cpu", 12.0, tags).unwrap();
-            db.write("cpu", 13.0, tags).unwrap();
-            db.write("cpu", 14.0, tags).unwrap();
+            db.write(metric_name, 10.0, tags).unwrap();
+            db.write(metric_name, 11.0, tags).unwrap();
+            db.write(metric_name, 12.0, tags).unwrap();
+            db.write(metric_name, 13.0, tags).unwrap();
+            db.write(metric_name, 14.0, tags).unwrap();
         }
         {
             let tags = tagset!(
@@ -160,11 +166,11 @@ fn avg(c: &mut Criterion) {
                 "host" => "host-3",
             );
 
-            db.write("cpu", 10.0, tags).unwrap();
-            db.write("cpu", 11.0, tags).unwrap();
-            db.write("cpu", 12.0, tags).unwrap();
-            db.write("cpu", 13.0, tags).unwrap();
-            db.write("cpu", 14.0, tags).unwrap();
+            db.write(metric_name, 10.0, tags).unwrap();
+            db.write(metric_name, 11.0, tags).unwrap();
+            db.write(metric_name, 12.0, tags).unwrap();
+            db.write(metric_name, 13.0, tags).unwrap();
+            db.write(metric_name, 14.0, tags).unwrap();
         }
         {
             let tags = tagset!(
@@ -173,15 +179,15 @@ fn avg(c: &mut Criterion) {
                 "host" => "host-3",
             );
 
-            db.write("cpu", 10.0, tags).unwrap();
-            db.write("cpu", 11.0, tags).unwrap();
-            db.write("cpu", 12.0, tags).unwrap();
-            db.write("cpu", 13.0, tags).unwrap();
-            db.write("cpu", 14.0, tags).unwrap();
+            db.write(metric_name, 10.0, tags).unwrap();
+            db.write(metric_name, 11.0, tags).unwrap();
+            db.write(metric_name, 12.0, tags).unwrap();
+            db.write(metric_name, 13.0, tags).unwrap();
+            db.write(metric_name, 14.0, tags).unwrap();
         }
 
         b.iter(|| {
-            db.avg("cpu", "host")
+            db.avg(metric_name, "host")
                 .filter("service:db AND env:prod")
                 .build()
                 .unwrap()

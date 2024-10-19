@@ -23,12 +23,14 @@
 //! #   std::fs::remove_dir_all(path)?;
 //! # }
 //! #
-//! use talna::{Database, tagset};
+//! use talna::{Database, MetricName, tagset};
 //!
 //! let db = Database::new(path, /* cache size in MiB */ 64)?;
 //!
+//! let metric_name = MetricName::try_from("cpu.total").unwrap();
+//!
 //! db.write(
-//!     "cpu.total", // metric name
+//!     metric_name,
 //!     25.42, // actual value (float)
 //!     tagset!(
 //!         "env" => "prod",
@@ -38,7 +40,7 @@
 //! )?;
 //!
 //! db.write(
-//!     "cpu.total", // metric name
+//!     metric_name,
 //!     42.42, // actual value (float)
 //!     tagset!(
 //!         "env" => "prod",
@@ -48,7 +50,7 @@
 //! )?;
 //!
 //! let grouped_timeseries = db
-//!   .avg(/* metric */ "cpu.total", /* group by tag */ "host")
+//!   .avg(metric_name, /* group by tag */ "host")
 //!   .filter("env:prod AND service:db")
 //!   // use .start() and .end() to set the time bounds
 //!   // use .granularity() to set the granularity (bucket width in nanoseconds)
@@ -73,11 +75,11 @@
 #![warn(clippy::result_unit_err)]
 
 mod agg;
-mod constants;
 mod db;
 mod duration;
 mod error;
 mod merge;
+mod metric_name;
 
 #[doc(hidden)]
 pub mod query;
@@ -94,6 +96,7 @@ type HashMap<K, V> = std::collections::HashMap<K, V, rustc_hash::FxBuildHasher>;
 pub use db::Database;
 pub use duration::Duration;
 pub use error::{Error, Result};
+pub use metric_name::MetricName;
 pub use time::timestamp;
 
 /// A list of tags.

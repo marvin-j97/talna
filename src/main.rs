@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::time::Instant;
-use talna::{Database, Value};
+use talna::{Database, MetricName, Value};
 
 #[cfg(not(target_env = "msvc"))]
 use tikv_jemallocator::Jemalloc;
@@ -25,7 +25,7 @@ fn main() -> talna::Result<()> {
 
     let db = Database::new(path, 128)?;
 
-    let metric_name = "cpu.total";
+    let metric_name = MetricName::try_from("cpu.total").unwrap();
 
     let start = Instant::now();
 

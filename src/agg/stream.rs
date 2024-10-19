@@ -24,18 +24,23 @@ pub trait Aggregation {
 /// A streaming aggregator
 ///
 /// Takes in a stream of data points, and emits aggregated buckets.
-pub struct Aggregator<'a, A: Aggregation + Clone> {
+pub struct Aggregator<'a, A, I>
+where
+    A: Aggregation,
+    I: Iterator<Item = crate::Result<StreamItem>>,
+{
     config: Builder<'a, A>,
     bucket: Bucket,
-    reader: Box<dyn Iterator<Item = crate::Result<StreamItem>>>,
+    reader: I,
     phantom: PhantomData<A>,
 }
 
-impl<'a, A: Aggregation + Clone> Aggregator<'a, A> {
-    pub fn new(
-        builder: Builder<'a, A>,
-        reader: Box<dyn Iterator<Item = crate::Result<StreamItem>>>,
-    ) -> Self {
+impl<'a, A, I> Aggregator<'a, A, I>
+where
+    A: Aggregation,
+    I: Iterator<Item = crate::Result<StreamItem>>,
+{
+    pub fn new(builder: Builder<'a, A>, reader: I) -> Self {
         Self {
             config: builder,
             bucket: Bucket::default(),
@@ -45,7 +50,11 @@ impl<'a, A: Aggregation + Clone> Aggregator<'a, A> {
     }
 }
 
-impl<'a, A: Aggregation + Clone> Iterator for Aggregator<'a, A> {
+impl<'a, A, I> Iterator for Aggregator<'a, A, I>
+where
+    A: Aggregation,
+    I: Iterator<Item = crate::Result<StreamItem>>,
+{
     type Item = crate::Result<Bucket>;
 
     fn next(&mut self) -> Option<Self::Item> {

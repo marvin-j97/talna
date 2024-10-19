@@ -6,13 +6,15 @@
 /// #   std::fs::remove_dir_all(path)?;
 /// # }
 /// #
-/// # use talna::{Database, Duration, tagset, timestamp};
+/// # use talna::{Database, Duration, MetricName, tagset, timestamp};
 /// #
 /// # let db = Database::new(path, /* cache size in MiB */ 64)?;
 /// #
+/// let metric_name = MetricName::try_from("cpu.total").unwrap();
+///
 /// db.write(
-///     "cpu.total", // metric name
-///     25.42, // actual value (float)
+///     metric_name,
+///     25.42,
 ///     tagset!(
 ///         "env" => "prod",
 ///         "service" => "db",
@@ -21,8 +23,8 @@
 /// )?;
 ///
 /// db.write(
-///     "cpu.total", // metric name
-///     42.42, // actual value (float)
+///     metric_name,
+///     42.42,
 ///     tagset!(
 ///         "env" => "prod",
 ///         "service" => "db",
@@ -33,7 +35,7 @@
 /// let now = timestamp();
 ///
 /// let grouped_timeseries = db
-///   .avg(/* metric */ "cpu.total", /* group by tag */ "host")
+///   .avg(metric_name, /* group by tag */ "host")
 ///   .filter("env:prod AND service:db")
 ///   .start(now - Duration::minutes(15))
 ///   .granularity(Duration::minutes(1))

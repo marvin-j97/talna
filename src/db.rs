@@ -1,11 +1,10 @@
-use crate::constants::METRICS_NAME_CHARS;
-use crate::constants::MINUTE_IN_NS;
 use crate::query::filter::parse_filter_query;
 use crate::series_key::SeriesKey;
 use crate::smap::SeriesMapping;
 use crate::tag_index::TagIndex;
 use crate::tag_sets::TagSets;
 use crate::time::timestamp;
+use crate::MetricName;
 use crate::SeriesId;
 use crate::TagSet;
 use crate::Value;
@@ -29,6 +28,8 @@ pub enum Mode {
     /// Write become faster by skipping the `write()` syscall to OS buffers.
     Speedy,
 } */
+
+pub(crate) const MINUTE_IN_NS: u128 = 60_000_000_000;
 
 #[derive(Clone)]
 pub struct Series {
@@ -223,13 +224,13 @@ impl Database {
     #[must_use]
     pub fn avg<'a>(
         &'a self,
-        metric: &'a str,
+        metric: MetricName<'a>,
         group_by: &'a str,
     ) -> crate::agg::Builder<crate::agg::Average> {
         crate::agg::Builder {
             phantom: PhantomData,
             database: self,
-            metric_name: metric,
+            metric_name: &metric,
             filter_expr: "*", // TODO: need wildcard
             bucket_width: MINUTE_IN_NS,
             group_by,
@@ -242,13 +243,13 @@ impl Database {
     #[must_use]
     pub fn sum<'a>(
         &'a self,
-        metric: &'a str,
+        metric: MetricName<'a>,
         group_by: &'a str,
     ) -> crate::agg::Builder<crate::agg::Sum> {
         crate::agg::Builder {
             phantom: PhantomData,
             database: self,
-            metric_name: metric,
+            metric_name: &metric,
             filter_expr: "*", // TODO: need wildcard
             bucket_width: MINUTE_IN_NS,
             group_by,
@@ -261,13 +262,13 @@ impl Database {
     #[must_use]
     pub fn min<'a>(
         &'a self,
-        metric: &'a str,
+        metric: MetricName<'a>,
         group_by: &'a str,
     ) -> crate::agg::Builder<crate::agg::Min> {
         crate::agg::Builder {
             phantom: PhantomData,
             database: self,
-            metric_name: metric,
+            metric_name: &metric,
             filter_expr: "*", // TODO: need wildcard
             bucket_width: MINUTE_IN_NS,
             group_by,
@@ -280,13 +281,13 @@ impl Database {
     #[must_use]
     pub fn max<'a>(
         &'a self,
-        metric: &'a str,
+        metric: MetricName<'a>,
         group_by: &'a str,
     ) -> crate::agg::Builder<crate::agg::Max> {
         crate::agg::Builder {
             phantom: PhantomData,
             database: self,
-            metric_name: metric,
+            metric_name: &metric,
             filter_expr: "*", // TODO: need wildcard
             bucket_width: MINUTE_IN_NS,
             group_by,
@@ -299,13 +300,13 @@ impl Database {
     #[must_use]
     pub fn count<'a>(
         &'a self,
-        metric: &'a str,
+        metric: MetricName<'a>,
         group_by: &'a str,
     ) -> crate::agg::Builder<crate::agg::Count> {
         crate::agg::Builder {
             phantom: PhantomData,
             database: self,
-            metric_name: metric,
+            metric_name: &metric,
             filter_expr: "*", // TODO: need wildcard
             bucket_width: MINUTE_IN_NS,
             group_by,
@@ -319,22 +320,18 @@ impl Database {
     /// # Errors
     ///
     /// Returns error if an I/O error occured.
-    pub fn write(&self, metric: &str, value: Value, tags: &TagSet) -> crate::Result<()> {
+    pub fn write(&self, metric: MetricName, value: Value, tags: &TagSet) -> crate::Result<()> {
         self.write_at(metric, timestamp(), value, tags)
     }
 
     #[doc(hidden)]
     pub fn write_at(
         &self,
-        metric: &str,
+        metric: MetricName,
         ts: u128,
         value: Value,
         tags: &TagSet,
     ) -> crate::Result<()> {
-        if metric.chars().any(|c| !METRICS_NAME_CHARS.contains(c)) {
-            return Err(crate::Error::InvalidMetricName);
-        }
-
         let series_key = SeriesKey::format(metric, tags);
         let series_id: Option<u64> = self.0.smap.get(&series_key)?;
 
@@ -362,7 +359,7 @@ impl Database {
     fn initialize_new_series(
         &self,
         series_key: &str,
-        metric: &str,
+        metric: MetricName,
         tags: &TagSet,
     ) -> crate::Result<Series> {
         // NOTE: We need to run in a transaction (for serializability)
@@ -451,9 +448,10 @@ mod tests {
     fn test_agg_cnt() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
         let db = Database::new(&folder, 16)?;
+        let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
-            "cpu.total",
+            metric_name,
             0,
             4.0,
             tagset!(
@@ -461,7 +459,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             1,
             10.0,
             tagset!(
@@ -469,7 +467,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             2,
             6.0,
             tagset!(
@@ -477,7 +475,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             3,
             10.0,
             tagset!(
@@ -485,7 +483,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             4,
             20.0,
             tagset!(
@@ -494,7 +492,7 @@ mod tests {
         )?;
 
         db.write_at(
-            "cpu.total",
+            metric_name,
             5,
             7.0,
             tagset!(
@@ -502,7 +500,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             6,
             5.0,
             tagset!(
@@ -510,7 +508,7 @@ mod tests {
             ),
         )?;
 
-        let aggregator = db.count("cpu.total", "service").build()?;
+        let aggregator = db.count(metric_name, "service").build()?;
         assert_eq!(2, aggregator.len());
         assert!(aggregator.contains_key("talna"));
         assert!(aggregator.contains_key("smoltable"));
@@ -544,9 +542,10 @@ mod tests {
     fn test_agg_max() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
         let db = Database::new(&folder, 16)?;
+        let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
-            "cpu.total",
+            metric_name,
             0,
             4.0,
             tagset!(
@@ -554,7 +553,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             1,
             10.0,
             tagset!(
@@ -562,7 +561,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             2,
             6.0,
             tagset!(
@@ -570,7 +569,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             3,
             10.0,
             tagset!(
@@ -578,7 +577,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             4,
             20.0,
             tagset!(
@@ -587,7 +586,7 @@ mod tests {
         )?;
 
         db.write_at(
-            "cpu.total",
+            metric_name,
             5,
             7.0,
             tagset!(
@@ -595,7 +594,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             6,
             5.0,
             tagset!(
@@ -603,7 +602,7 @@ mod tests {
             ),
         )?;
 
-        let aggregator = db.max("cpu.total", "service").build()?;
+        let aggregator = db.max(metric_name, "service").build()?;
         assert_eq!(2, aggregator.len());
         assert!(aggregator.contains_key("talna"));
         assert!(aggregator.contains_key("smoltable"));
@@ -637,9 +636,10 @@ mod tests {
     fn test_agg_min() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
         let db = Database::new(&folder, 16)?;
+        let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
-            "cpu.total",
+            metric_name,
             0,
             4.0,
             tagset!(
@@ -647,7 +647,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             1,
             10.0,
             tagset!(
@@ -655,7 +655,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             2,
             6.0,
             tagset!(
@@ -663,7 +663,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             3,
             10.0,
             tagset!(
@@ -671,7 +671,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             4,
             20.0,
             tagset!(
@@ -680,7 +680,7 @@ mod tests {
         )?;
 
         db.write_at(
-            "cpu.total",
+            metric_name,
             5,
             7.0,
             tagset!(
@@ -688,7 +688,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             6,
             5.0,
             tagset!(
@@ -696,7 +696,7 @@ mod tests {
             ),
         )?;
 
-        let aggregator = db.min("cpu.total", "service").build()?;
+        let aggregator = db.min(metric_name, "service").build()?;
         assert_eq!(2, aggregator.len());
         assert!(aggregator.contains_key("talna"));
         assert!(aggregator.contains_key("smoltable"));
@@ -730,9 +730,10 @@ mod tests {
     fn test_agg_sum() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
         let db = Database::new(&folder, 16)?;
+        let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
-            "cpu.total",
+            metric_name,
             0,
             4.0,
             tagset!(
@@ -740,7 +741,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             1,
             10.0,
             tagset!(
@@ -748,7 +749,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             2,
             6.0,
             tagset!(
@@ -756,7 +757,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             3,
             10.0,
             tagset!(
@@ -764,7 +765,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             4,
             20.0,
             tagset!(
@@ -773,7 +774,7 @@ mod tests {
         )?;
 
         db.write_at(
-            "cpu.total",
+            metric_name,
             5,
             7.0,
             tagset!(
@@ -781,7 +782,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             6,
             5.0,
             tagset!(
@@ -789,7 +790,7 @@ mod tests {
             ),
         )?;
 
-        let aggregator = db.sum("cpu.total", "service").build()?;
+        let aggregator = db.sum(metric_name, "service").build()?;
         assert_eq!(2, aggregator.len());
         assert!(aggregator.contains_key("talna"));
         assert!(aggregator.contains_key("smoltable"));
@@ -823,9 +824,10 @@ mod tests {
     fn test_agg_avg() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
         let db = Database::new(&folder, 16)?;
+        let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
-            "cpu.total",
+            metric_name,
             0,
             4.0,
             tagset!(
@@ -833,7 +835,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             1,
             10.0,
             tagset!(
@@ -841,7 +843,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             2,
             6.0,
             tagset!(
@@ -849,7 +851,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             3,
             10.0,
             tagset!(
@@ -857,7 +859,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             4,
             20.0,
             tagset!(
@@ -866,7 +868,7 @@ mod tests {
         )?;
 
         db.write_at(
-            "cpu.total",
+            metric_name,
             5,
             7.0,
             tagset!(
@@ -874,7 +876,7 @@ mod tests {
             ),
         )?;
         db.write_at(
-            "cpu.total",
+            metric_name,
             6,
             5.0,
             tagset!(
@@ -882,7 +884,7 @@ mod tests {
             ),
         )?;
 
-        let aggregator = db.avg("cpu.total", "service").build()?;
+        let aggregator = db.avg(metric_name, "service").build()?;
         assert_eq!(2, aggregator.len());
         assert!(aggregator.contains_key("talna"));
         assert!(aggregator.contains_key("smoltable"));

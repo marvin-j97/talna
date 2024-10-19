@@ -1,4 +1,4 @@
-use crate::TagSet;
+use crate::{MetricName, TagSet};
 
 #[doc(hidden)]
 pub struct SeriesKey;
@@ -32,9 +32,9 @@ impl SeriesKey {
     }
 
     #[must_use]
-    pub fn format(metric: &str, tags: &TagSet) -> String {
+    pub fn format(metric: MetricName, tags: &TagSet) -> String {
         let mut str = Self::allocate_string_for_tags(tags, metric.len() + 1);
-        str.push_str(metric);
+        str.push_str(*metric);
         str.push('#');
         Self::join_tags(&mut str, tags);
         str
@@ -42,24 +42,29 @@ impl SeriesKey {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::tagset;
 
     #[test_log::test]
     fn create_series_key() {
+        let metric = MetricName::try_from("cpu.total").unwrap();
+
         assert_eq!(
             "cpu.total#service:web",
-            SeriesKey::format("cpu.total", tagset!("service" => "web")),
+            SeriesKey::format(metric, tagset!("service" => "web")),
         );
     }
 
     #[test_log::test]
     fn create_series_key_2() {
+        let metric = MetricName::try_from("cpu.total").unwrap();
+
         assert_eq!(
             "cpu.total#host:i-187;service:web",
             SeriesKey::format(
-                "cpu.total",
+                metric,
                 tagset!(
                         "service" => "web",
                         "host" => "i-187",
@@ -70,10 +75,12 @@ mod tests {
 
     #[test_log::test]
     fn create_series_key_3() {
+        let metric = MetricName::try_from("cpu.total").unwrap();
+
         assert_eq!(
             "cpu.total#env:dev;host:i-187;service:web",
             SeriesKey::format(
-                "cpu.total",
+                metric,
                 tagset!(
                     "service" => "web",
                     "host" => "i-187",
