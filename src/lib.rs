@@ -93,6 +93,7 @@ mod time;
 type SeriesId = u64;
 type HashMap<K, V> = std::collections::HashMap<K, V, rustc_hash::FxBuildHasher>;
 
+pub use agg::{Bucket, GroupedAggregation};
 pub use db::Database;
 pub use duration::Duration;
 pub use error::{Error, Result};

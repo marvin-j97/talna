@@ -3,6 +3,8 @@ use fjall::{CompressionType, PartitionCreateOptions, TxKeyspace, TxPartition, Wr
 
 const PARTITION_NAME: &str = "_talna#tags";
 
+pub(crate) type OwnedTagSets = crate::HashMap<String, String>;
+
 /// Maps Series IDs to their tags
 pub struct TagSets {
     partition: TxPartition,
@@ -25,7 +27,7 @@ impl TagSets {
         tx.insert(&self.partition, series_id.to_be_bytes(), tags);
     }
 
-    pub fn get(&self, series_id: SeriesId) -> crate::Result<crate::HashMap<String, String>> {
+    pub fn get(&self, series_id: SeriesId) -> crate::Result<OwnedTagSets> {
         Ok(self
             .partition
             .get(series_id.to_be_bytes())?
@@ -38,7 +40,7 @@ impl TagSets {
     }
 }
 
-fn parse_key_value_pairs(input: &str) -> crate::HashMap<String, String> {
+fn parse_key_value_pairs(input: &str) -> OwnedTagSets {
     input
         .split(';')
         .map(|pair| {

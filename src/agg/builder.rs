@@ -1,4 +1,4 @@
-use super::{stream::Aggregation, Bucket};
+use super::{stream::Aggregation, GroupedAggregation};
 use crate::{
     agg::stream::Aggregator,
     db::{SeriesStream, StreamItem},
@@ -6,59 +6,6 @@ use crate::{
     Database,
 };
 use std::marker::PhantomData;
-
-pub struct GroupedAggregation<'a, A, I>(crate::HashMap<String, Aggregator<'a, A, I>>)
-where
-    A: Aggregation,
-    I: Iterator<Item = crate::Result<StreamItem>>;
-
-impl<'a, A, I> std::ops::Deref for GroupedAggregation<'a, A, I>
-where
-    A: Aggregation,
-    I: Iterator<Item = crate::Result<StreamItem>>,
-{
-    type Target = crate::HashMap<String, Aggregator<'a, A, I>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a, A, I> IntoIterator for GroupedAggregation<'a, A, I>
-where
-    A: Aggregation,
-    I: Iterator<Item = crate::Result<StreamItem>>,
-{
-    type Item = (String, Aggregator<'a, A, I>);
-    type IntoIter = std::collections::hash_map::IntoIter<String, Aggregator<'a, A, I>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
-impl<'a, A, I> GroupedAggregation<'a, A, I>
-where
-    A: Aggregation,
-    I: Iterator<Item = crate::Result<StreamItem>>,
-{
-    pub fn collect(self) -> crate::Result<crate::HashMap<String, Vec<Bucket>>> {
-        let mut map =
-            crate::HashMap::with_capacity_and_hasher(self.0.len(), rustc_hash::FxBuildHasher);
-
-        for (group, aggregator) in self.0 {
-            let mut buckets = vec![];
-
-            for bucket in aggregator {
-                buckets.push(bucket?);
-            }
-
-            map.insert(group, buckets);
-        }
-
-        Ok(map)
-    }
-}
 
 pub struct Builder<'a, A: Aggregation> {
     pub(crate) phantom: PhantomData<A>,

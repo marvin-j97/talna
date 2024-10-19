@@ -2,6 +2,7 @@ use crate::query::filter::parse_filter_query;
 use crate::series_key::SeriesKey;
 use crate::smap::SeriesMapping;
 use crate::tag_index::TagIndex;
+use crate::tag_sets::OwnedTagSets;
 use crate::tag_sets::TagSets;
 use crate::time::timestamp;
 use crate::MetricName;
@@ -55,7 +56,7 @@ pub struct StreamItem {
 
 pub struct SeriesStream {
     // pub(crate) series_id: SeriesId,
-    pub(crate) tags: crate::HashMap<String, String>,
+    pub(crate) tags: OwnedTagSets,
     pub(crate) reader: Box<dyn Iterator<Item = crate::Result<StreamItem>>>,
 }
 
@@ -67,7 +68,7 @@ pub struct DatabaseInner {
     pub(crate) tag_sets: TagSets,
 }
 
-/// An embeddable time series database.
+/// An embeddable time series database
 #[derive(Clone)]
 pub struct Database(Arc<DatabaseInner>);
 
@@ -81,7 +82,7 @@ impl Database {
     ///
     /// # Errors
     ///
-    /// Returns error if an I/O error occured.
+    /// Returns error if an I/O error occurred.
     pub fn from_keyspace(keyspace: TxKeyspace) -> crate::Result<Self> {
         let tag_index = TagIndex::new(&keyspace)?;
         let tag_sets = TagSets::new(&keyspace)?;
@@ -125,12 +126,12 @@ impl Database {
 
     /// Opens a new time series database.
     ///
-    /// If you have a keyspace already in your application, you probably
+    /// If you have a keyspace already in your application, you may
     /// want to use [`Database::from_keyspace`] instead.
     ///
     /// # Errors
     ///
-    /// Returns error if an I/O error occured.
+    /// Returns error if an I/O error occurred.
     pub fn new<P: AsRef<Path>>(path: P, cache_mib: u64) -> crate::Result<Self> {
         let keyspace = fjall::Config::new(path)
             .block_cache(Arc::new(BlockCache::with_capacity_bytes(
@@ -220,7 +221,9 @@ impl Database {
         Ok(streams)
     }
 
-    /// Returns the average value for each bucket.
+    /// Returns an aggregation builder.
+    ///
+    /// The aggregation returns the average value for each bucket.
     #[must_use]
     pub fn avg<'a>(
         &'a self,
@@ -239,7 +242,9 @@ impl Database {
         }
     }
 
-    /// Returns the sum of the values of each bucket.
+    /// Returns an aggregation builder.
+    ///
+    /// The aggregation returns the sum of the values of each bucket.
     #[must_use]
     pub fn sum<'a>(
         &'a self,
@@ -258,7 +263,9 @@ impl Database {
         }
     }
 
-    /// Returns the minimum value for each bucket.
+    /// Returns an aggregation builder.
+    ///
+    /// The aggregation returns the minimum value for each bucket.
     #[must_use]
     pub fn min<'a>(
         &'a self,
@@ -277,7 +284,9 @@ impl Database {
         }
     }
 
-    /// Returns the maximum value for each bucket.
+    /// Returns an aggregation builder.
+    ///
+    /// The aggregation returns the maximum value for each bucket.
     #[must_use]
     pub fn max<'a>(
         &'a self,
@@ -296,7 +305,9 @@ impl Database {
         }
     }
 
-    /// Counts data points (ignores their value) per bucket.
+    /// Returns an aggregation builder.
+    ///
+    /// The aggregation counts data points (ignores their value) per bucket.
     #[must_use]
     pub fn count<'a>(
         &'a self,
@@ -319,7 +330,7 @@ impl Database {
     ///
     /// # Errors
     ///
-    /// Returns error if an I/O error occured.
+    /// Returns error if an I/O error occurred.
     pub fn write(&self, metric: MetricName, value: Value, tags: &TagSet) -> crate::Result<()> {
         self.write_at(metric, timestamp(), value, tags)
     }
