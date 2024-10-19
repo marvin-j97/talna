@@ -8,7 +8,7 @@
 /// #
 /// # use talna::{Database, Duration, MetricName, tagset, timestamp};
 /// #
-/// # let db = Database::new(path, /* cache size in MiB */ 64)?;
+/// # let db = Database::builder(path).open()?;
 /// #
 /// let metric_name = MetricName::try_from("cpu.total").unwrap();
 ///
