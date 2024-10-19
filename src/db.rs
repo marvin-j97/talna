@@ -5,30 +5,17 @@ use crate::tag_index::TagIndex;
 use crate::tag_sets::OwnedTagSets;
 use crate::tag_sets::TagSets;
 use crate::time::timestamp;
+use crate::DatabaseBuilder;
 use crate::MetricName;
 use crate::SeriesId;
 use crate::TagSet;
 use crate::Value;
 use byteorder::{BigEndian, ReadBytesExt};
-use fjall::{BlockCache, Partition, PartitionCreateOptions, TxKeyspace};
+use fjall::{Partition, PartitionCreateOptions, TxKeyspace};
 use std::io::Cursor;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::{collections::BTreeMap, ops::Bound, path::Path, sync::RwLock};
-
-/* /// Sets the database mode.
-#[derive(Default)]
-pub enum Mode {
-    #[default]
-    /// Every write operation will be flushed to OS buffers,
-    /// for application crash safety (not power loss safety).
-    Standard,
-
-    /// Increases write throughput at the cost of lower durability guarantees.
-    ///
-    /// Write become faster by skipping the `write()` syscall to OS buffers.
-    Speedy,
-} */
 
 pub const MINUTE_IN_NS: u128 = 60_000_000_000;
 
@@ -66,6 +53,7 @@ pub struct DatabaseInner {
     smap: SeriesMapping,
     tag_index: TagIndex,
     pub(crate) tag_sets: TagSets,
+    hyper_mode: bool,
 }
 
 /// An embeddable time series database
@@ -76,14 +64,12 @@ pub struct Database(Arc<DatabaseInner>);
 // if disjoint...
 
 impl Database {
-    /// Uses an existing `fjall` keyspace to open a time series database.
-    ///
-    /// Partitions are prefixed with `_talna#` to avoid name clashes with other applications.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if an I/O error occurred.
-    pub fn from_keyspace(keyspace: TxKeyspace) -> crate::Result<Self> {
+    /// Creates a new database builder.
+    pub fn builder<P: AsRef<Path>>(path: P) -> DatabaseBuilder {
+        DatabaseBuilder::new(path)
+    }
+
+    pub(crate) fn from_keyspace(keyspace: TxKeyspace, hyper_mode: bool) -> crate::Result<Self> {
         let tag_index = TagIndex::new(&keyspace)?;
         let tag_sets = TagSets::new(&keyspace)?;
         let series_mapping = SeriesMapping::new(&keyspace)?;
@@ -121,25 +107,8 @@ impl Database {
             smap: series_mapping,
             tag_index,
             tag_sets,
+            hyper_mode,
         })))
-    }
-
-    /// Opens a new time series database.
-    ///
-    /// If you have a keyspace already in your application, you may
-    /// want to use [`Database::from_keyspace`] instead.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if an I/O error occurred.
-    pub fn new<P: AsRef<Path>>(path: P, cache_mib: u64) -> crate::Result<Self> {
-        let keyspace = fjall::Config::new(path)
-            .block_cache(Arc::new(BlockCache::with_capacity_bytes(
-                cache_mib * 1_024 * 1_024,
-            )))
-            .open_transactional()?;
-
-        Self::from_keyspace(keyspace)
     }
 
     fn get_series_name(series_id: SeriesId) -> String {
@@ -406,8 +375,7 @@ impl Database {
             let partition = self.0.keyspace.open_partition(
                 &Self::get_series_name(next_series_id),
                 PartitionCreateOptions::default()
-                    // TODO: hyper_mode: maybe use manual_journal_persist(true),
-                    // TODO: only flush to buffers either on interval or so
+                    .manual_journal_persist(self.0.hyper_mode)
                     .block_size(64_000)
                     .compression(fjall::CompressionType::Lz4),
             )?;
@@ -446,6 +414,24 @@ impl Database {
 
         Ok(series)
     }
+
+    /// Flushes writes.
+    ///
+    /// If sync is `true`, the writes are guaranteed to be written to disk
+    /// when this function exits.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if an I/O error occurred.
+    pub fn flush(&self, sync: bool) -> crate::Result<()> {
+        use fjall::PersistMode::{Buffer, SyncAll};
+
+        self.0
+            .keyspace
+            .persist(if sync { SyncAll } else { Buffer })?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -458,7 +444,7 @@ mod tests {
     #[test]
     fn test_agg_cnt() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
-        let db = Database::new(&folder, 16)?;
+        let db = Database::builder(&folder).open()?;
         let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
@@ -552,7 +538,7 @@ mod tests {
     #[test]
     fn test_agg_max() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
-        let db = Database::new(&folder, 16)?;
+        let db = Database::builder(&folder).open()?;
         let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
@@ -646,7 +632,7 @@ mod tests {
     #[test]
     fn test_agg_min() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
-        let db = Database::new(&folder, 16)?;
+        let db = Database::builder(&folder).open()?;
         let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
@@ -740,7 +726,7 @@ mod tests {
     #[test]
     fn test_agg_sum() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
-        let db = Database::new(&folder, 16)?;
+        let db = Database::builder(&folder).open()?;
         let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
@@ -834,7 +820,7 @@ mod tests {
     #[test]
     fn test_agg_avg() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
-        let db = Database::new(&folder, 16)?;
+        let db = Database::builder(&folder).open()?;
         let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(

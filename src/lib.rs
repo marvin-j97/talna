@@ -25,7 +25,7 @@
 //! #
 //! use talna::{Database, MetricName, tagset};
 //!
-//! let db = Database::new(path, /* cache size in MiB */ 64)?;
+//! let db = Database::builder(path).open()?;
 //!
 //! let metric_name = MetricName::try_from("cpu.total").unwrap();
 //!
@@ -76,6 +76,7 @@
 
 mod agg;
 mod db;
+mod db_builder;
 mod duration;
 mod error;
 mod merge;
@@ -95,6 +96,7 @@ type HashMap<K, V> = std::collections::HashMap<K, V, rustc_hash::FxBuildHasher>;
 
 pub use agg::{Bucket, GroupedAggregation};
 pub use db::Database;
+pub use db_builder::Builder as DatabaseBuilder;
 pub use duration::Duration;
 pub use error::{Error, Result};
 pub use metric_name::MetricName;

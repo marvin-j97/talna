@@ -16,7 +16,7 @@ A simple, embeddable time series database.
 
 ## About
 
-It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine, allowing around ~800k data points per second to be ingested.
+It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine, allowing around ~1M data points per second to be ingested.
 
 With the storage engine being LSM-based, there's no degradation in write ingestion speed (even for datasets much larger than RAM), low write amplification (good for SSDs) and on-disk data is compressed (again, good for SSDs).
 
@@ -26,7 +26,7 @@ Data points are f32s by default, but can be switched to f64 using the `high_prec
 
 ## Benchmark: 1 billion data points
 
-Default config, jemalloc, i9 11900k
+Default config, jemalloc, i9 11900k:
 
 ```
 ingested 1 billion in 1191s
@@ -37,12 +37,23 @@ query [1M latest data points] in 135ms
 reopened DB in 353ms
 ```
 
+Hyper mode, jemalloc, i9 11900k:
+
+```
+ingested 1 billion in 638s
+write speed: 1567398 writes per second
+peak mem: 188 MiB
+disk space: 10 GiB
+query [1M latest data points] in 131ms
+reopened DB in 350ms
+```
+
 ## Basic usage
 
 ```rs
 use talna::{Database, MetricNamem, tagset};
 
-let db = Database::new(path, /* cache size in MiB */ 64)?;
+let db = Database::builder(path).open()?;
 
 let metric_name = MetricName::try_from("cpu.total").unwrap();
 
