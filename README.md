@@ -16,7 +16,7 @@ A simple, embeddable time series database.
 
 ## About
 
-It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine, allowing around ~700k data points per second to be ingested.
+It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine, allowing around ~800k data points per second to be ingested.
 
 With the storage engine being LSM-based, there's no degradation in write ingestion speed (even for datasets much larger than RAM), low write amplification (good for SSDs) and on-disk data is compressed (again, good for SSDs).
 
@@ -28,10 +28,13 @@ Data points are f32s by default, but can be switched to f64 using the `high_prec
 
 Default config, jemalloc, i9 11900k
 
-- ingested in 1374s (~727k inserts per second)
-- average memory usage: 100 MB , peak: ~170 MB
-- query latency for 1 million data points (`AVG | env:prod AND service:db AND (host:h-1 OR host:h-2 OR host:h-3)`): 110ms
-- disk space: 12 GB
+```
+ingested 1 billion in 1191.66s
+write latency per item: 1191ns
+write speed: 839630 WPS
+peak mem: 177 MiB
+disk space: 10 GiB
+```
 
 ## Basic usage
 
