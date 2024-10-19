@@ -1,38 +1,12 @@
 //! A simple, embeddable time series database.
 //!
-//! It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine,
-//! being able to ingest ~1M data points per seconds.
-//!
-//! The LSM-based storage engine causes no degradation in write ingestion speed, even for large datasets,
-//! has low write amplification (good for SSDs) and compresses the on-disk data (again, good for SSDs).
+//! It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine.
 //!
 //! The tagging and querying mechanism is modelled after Datadog's metrics service (<https://www.datadoghq.com/blog/engineering/timeseries-indexing-at-scale/>).
 //!
 //! Data points are f32s by default, but can be switched to f64 using the `high_precision` feature flag.
 //!
-//! 1 billion data points (default config, jemalloc, i9 11900k):
-//!
-//! Default config, jemalloc, i9 11900k:
-//!
-//! ```
-//! ingested 1 billion in 1191s
-//! write speed: 839630 writes per second
-//! peak mem: 177 MiB
-//! disk space: 10 GiB
-//! query [1M latest data points] in 135ms
-//! reopened DB in 353ms
-//! ```
-//!
-//! Hyper mode, jemalloc, i9 11900k:
-//!
-//! ```
-//! ingested 1 billion in 638s
-//! write speed: 1567398 writes per second
-//! peak mem: 188 MiB
-//! disk space: 10 GiB
-//! query [1M latest data points] in 131ms
-//! reopened DB in 350ms
-//! ```
+//! ## Basic usage
 //!
 //! ```
 //! # let path = std::path::Path::new(".testy");
