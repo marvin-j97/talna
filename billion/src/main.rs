@@ -111,14 +111,14 @@ fn main() -> talna::Result<()> {
     let disk_space = fs_extra::dir::get_size(".testy").unwrap();
     log::info!("disk space (GiB): {}", disk_space / 1_024 / 1_024 / 1_024);
 
-    let lower_bound = 1_000_000_000 - 500_000;
+    let lower_bound = 1_000_000_000 - 1_000_000;
 
     for _ in 0..5 {
         let start = Instant::now();
 
         let buckets = db
             .avg(metric_name, "host")
-            .filter("host:h-0 OR host:h-1")
+            .filter("host:h-9 OR host:h-8")
             .start(lower_bound)
             .build()?
             .collect()?;
