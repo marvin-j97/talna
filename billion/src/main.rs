@@ -21,9 +21,9 @@ fn main() -> talna::Result<()> {
 
     let path = Path::new(".testy");
 
-    /* if path.try_exists()? {
+    if path.try_exists()? {
         std::fs::remove_dir_all(path)?;
-    } */
+    }
 
     let mut rng = rand::thread_rng();
     let db = Database::new(path, 128)?;
@@ -58,7 +58,12 @@ fn main() -> talna::Result<()> {
     {
         use rand::Rng;
 
-        for (hidx, host) in ["h-0"].into_iter().enumerate() {
+        for (hidx, host) in [
+            "h-0", "h-1", "h-2", "h-3", "h-4", "h-5", "h-6", "h-7", "h-8", "h-9",
+        ]
+        .into_iter()
+        .enumerate()
+        {
             let tagset = talna::tagset!(
                 "env" => "prod",
                 "service" => "db",
