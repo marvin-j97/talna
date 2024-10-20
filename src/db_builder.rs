@@ -1,9 +1,6 @@
 use crate::Database;
 use fjall::{BlockCache, TxKeyspace};
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{path::Path, sync::Arc};
 
 /* /// Sets the database mode.
 #[derive(Default)]
@@ -24,15 +21,13 @@ pub enum Mode {
 
 /// Builder for [`Database`].
 pub struct Builder {
-    path: PathBuf,
     cache_size_mib: u64,
     hyper_mode: bool,
 }
 
 impl Builder {
-    pub(crate) fn new<P: AsRef<Path>>(path: P) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            path: path.as_ref().into(),
             cache_size_mib: 64,
             hyper_mode: false,
         }
@@ -64,8 +59,8 @@ impl Builder {
     /// # Errors
     ///
     /// Returns error if an I/O error occurred.
-    pub fn open(self) -> crate::Result<crate::Database> {
-        let keyspace = fjall::Config::new(self.path)
+    pub fn open<P: AsRef<Path>>(self, path: P) -> crate::Result<crate::Database> {
+        let keyspace = fjall::Config::new(path)
             .block_cache(Arc::new(BlockCache::with_capacity_bytes(
                 self.cache_size_mib * 1_024 * 1_024,
             )))

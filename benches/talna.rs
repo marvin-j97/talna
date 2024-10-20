@@ -89,7 +89,7 @@ fn insert_timestamp(c: &mut Criterion) {
         );
 
         let dir = tempfile::tempdir().unwrap();
-        let db = talna::Database::builder(&dir).open().unwrap();
+        let db = talna::Database::builder().open(&dir).unwrap();
 
         let mut ts = 0;
 
@@ -105,7 +105,7 @@ fn avg(c: &mut Criterion) {
 
     c.bench_function("avg", |b| {
         let dir = tempfile::tempdir().unwrap();
-        let db = talna::Database::builder(&dir).open().unwrap();
+        let db = talna::Database::builder().open(&dir).unwrap();
 
         let tags = tagset!(
             "service" => "db",
@@ -131,7 +131,7 @@ fn avg(c: &mut Criterion) {
 
     c.bench_function("avg (multi series)", |b| {
         let dir = tempfile::tempdir().unwrap();
-        let db = talna::Database::builder(&dir).open().unwrap();
+        let db = talna::Database::builder().open(&dir).unwrap();
 
         {
             let tags = tagset!(

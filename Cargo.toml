@@ -23,7 +23,7 @@ high_precision = []
 
 [dependencies]
 byteorder = "1.5.0"
-fjall = { version = "2", default-features = false, features = [
+fjall = { version = "2.2.0", default-features = false, features = [
   "lz4",
   "single_writer_tx",
 ] }

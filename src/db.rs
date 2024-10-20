@@ -65,8 +65,8 @@ pub struct Database(Arc<DatabaseInner>);
 
 impl Database {
     /// Creates a new database builder.
-    pub fn builder<P: AsRef<Path>>(path: P) -> DatabaseBuilder {
-        DatabaseBuilder::new(path)
+    pub fn builder() -> DatabaseBuilder {
+        DatabaseBuilder::new()
     }
 
     pub(crate) fn from_keyspace(keyspace: TxKeyspace, hyper_mode: bool) -> crate::Result<Self> {
@@ -444,7 +444,7 @@ mod tests {
     #[test]
     fn test_agg_cnt() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
-        let db = Database::builder(&folder).open()?;
+        let db = Database::builder().open(&folder)?;
         let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
@@ -538,7 +538,7 @@ mod tests {
     #[test]
     fn test_agg_max() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
-        let db = Database::builder(&folder).open()?;
+        let db = Database::builder().open(&folder)?;
         let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
@@ -632,7 +632,7 @@ mod tests {
     #[test]
     fn test_agg_min() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
-        let db = Database::builder(&folder).open()?;
+        let db = Database::builder().open(&folder)?;
         let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
@@ -726,7 +726,7 @@ mod tests {
     #[test]
     fn test_agg_sum() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
-        let db = Database::builder(&folder).open()?;
+        let db = Database::builder().open(&folder)?;
         let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(
@@ -820,7 +820,7 @@ mod tests {
     #[test]
     fn test_agg_avg() -> crate::Result<()> {
         let folder = tempfile::tempdir()?;
-        let db = Database::builder(&folder).open()?;
+        let db = Database::builder().open(&folder)?;
         let metric_name = MetricName::try_from("hello").unwrap();
 
         db.write_at(

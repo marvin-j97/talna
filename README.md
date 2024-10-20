@@ -53,7 +53,7 @@ reopened DB in 350ms
 ```rs
 use talna::{Database, MetricNamem, tagset};
 
-let db = Database::builder(path).open()?;
+let db = Database::builder().open(path)?;
 
 let metric_name = MetricName::try_from("cpu.total").unwrap();
 
