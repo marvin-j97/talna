@@ -51,7 +51,7 @@ reopened DB in 350ms
 ## Basic usage
 
 ```rs
-use talna::{Database, MetricNamem, tagset};
+use talna::{Database, MetricName, tagset};
 
 let db = Database::builder().open(path)?;
 
