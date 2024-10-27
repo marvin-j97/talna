@@ -51,7 +51,7 @@ reopened DB in 350ms
 ## Basic usage
 
 ```rs
-use talna::{Database, MetricNamem, tagset};
+use talna::{Database, Duration, MetricNamem, tagset, timestamp};
 
 let db = Database::builder().open(path)?;
 
@@ -81,7 +81,9 @@ let buckets = db
   .avg(metric_name, /* group by tag */ "host")
   .filter("env:prod AND service:db")
   // use .start() and .end() to set the time bounds
+  .start(timestamp() - Duration::months(1.0))
   // use .granularity() to set the granularity (bucket width in nanoseconds)
+  .granularity(Duration::days(1.0))
   .build()?
   .collect()?;
 

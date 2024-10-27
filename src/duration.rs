@@ -37,8 +37,8 @@
 /// let grouped_timeseries = db
 ///   .avg(metric_name, /* group by tag */ "host")
 ///   .filter("env:prod AND service:db")
-///   .start(now - Duration::minutes(15))
-///   .granularity(Duration::minutes(1))
+///   .start(now - Duration::minutes(15.0))
+///   .granularity(Duration::minutes(1.0))
 ///   .build()?
 ///   .collect()?;
 ///
@@ -51,43 +51,43 @@ pub struct Duration;
 impl Duration {
     /// Formats N years as nanosecond time frame.
     #[must_use]
-    pub const fn years(n: usize) -> u128 {
+    pub const fn years(n: f64) -> u128 {
         Self::months(n) * 12
     }
 
     /// Formats N months as nanosecond time frame.
     #[must_use]
-    pub const fn months(n: usize) -> u128 {
+    pub const fn months(n: f64) -> u128 {
         Self::weeks(n) * 4
     }
 
     /// Formats N weeks as nanosecond time frame.
     #[must_use]
-    pub const fn weeks(n: usize) -> u128 {
+    pub const fn weeks(n: f64) -> u128 {
         Self::days(n) * 7
     }
 
     /// Formats N days as nanosecond time frame.
     #[must_use]
-    pub const fn days(n: usize) -> u128 {
+    pub const fn days(n: f64) -> u128 {
         Self::hours(n) * 24
     }
 
     /// Formats N hours as nanosecond time frame.
     #[must_use]
-    pub const fn hours(n: usize) -> u128 {
+    pub const fn hours(n: f64) -> u128 {
         Self::minutes(n) * 60
     }
 
     /// Formats N minutes as nanosecond time frame.
     #[must_use]
-    pub const fn minutes(n: usize) -> u128 {
+    pub const fn minutes(n: f64) -> u128 {
         Self::seconds(n) * 60
     }
 
     /// Formats N seconds as nanosecond time frame.
     #[must_use]
-    pub const fn seconds(n: usize) -> u128 {
+    pub const fn seconds(n: f64) -> u128 {
         (n as u128) * 1_000_000_000
     }
 }

@@ -15,7 +15,7 @@ use fjall::{Partition, PartitionCreateOptions, TxKeyspace};
 use std::io::Cursor;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use std::{collections::BTreeMap, ops::Bound, path::Path, sync::RwLock};
+use std::{collections::BTreeMap, ops::Bound, sync::RwLock};
 
 pub const MINUTE_IN_NS: u128 = 60_000_000_000;
 

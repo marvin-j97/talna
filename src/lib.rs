@@ -14,7 +14,7 @@
 //! #   std::fs::remove_dir_all(path)?;
 //! # }
 //! #
-//! use talna::{Database, MetricName, tagset};
+//! use talna::{Database, Duration, MetricName, tagset, timestamp};
 //!
 //! let db = Database::builder().open(path)?;
 //!
@@ -40,11 +40,15 @@
 //!     ),
 //! )?;
 //!
+//! let now = timestamp();
+//!
 //! let grouped_timeseries = db
 //!   .avg(metric_name, /* group by tag */ "host")
 //!   .filter("env:prod AND service:db")
 //!   // use .start() and .end() to set the time bounds
+//!   .start(now - Duration::months(1.0))
 //!   // use .granularity() to set the granularity (bucket width in nanoseconds)
+//!   .granularity(Duration::days(1.0))
 //!   .build()?
 //!   .collect()?;
 //!
