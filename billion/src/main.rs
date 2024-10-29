@@ -28,10 +28,10 @@ fn main() -> talna::Result<()> {
     } */
 
     {
-        let db = Database::builder(path)
-            .cache_size_mib(128)
+        let db = Database::builder()
+            .cache_size_mib(8) // TODO: cache currently bloats memory a lot because of Arcs in block cache
             .hyper_mode(true)
-            .open()?;
+            .open(path)?;
 
         let metric_name = MetricName::try_from("cpu.total").unwrap();
 
@@ -139,13 +139,15 @@ fn main() -> talna::Result<()> {
     {
         let start = Instant::now();
 
-        let db = Database::builder(path)
+        let db = Database::builder()
             .cache_size_mib(128)
             .hyper_mode(true)
-            .open()?;
+            .open(path)?;
 
         log::info!("reopened DB in {:?}", start.elapsed());
     }
+
+    std::fs::remove_dir_all(".testy")?;
 
     Ok(())
 }
