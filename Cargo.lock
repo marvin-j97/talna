@@ -1039,9 +1039,9 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 
 [[package]]
 name = "value-log"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "701aa53f40cdebc413fd3a1e6637c118e6a8d36e40736206f374e3722f0ddf53"
+checksum = "71f2774a6212a226657ca9ce1aae573b711eb014ce7590b48fc3b483d7d47bbe"
 dependencies = [
  "byteorder",
  "log",
