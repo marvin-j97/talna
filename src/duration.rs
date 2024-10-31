@@ -88,6 +88,24 @@ impl Duration {
     /// Formats N seconds as nanosecond time frame.
     #[must_use]
     pub const fn seconds(n: f64) -> u128 {
-        (n as u128) * 1_000_000_000
+        Self::millis(n) * 1_000
+    }
+
+    /// Formats N milliseconds as nanosecond time frame.
+    #[must_use]
+    pub const fn millis(n: f64) -> u128 {
+        Self::micros(n) * 1_000
+    }
+
+    /// Formats N microseconds as nanosecond time frame.
+    #[must_use]
+    pub const fn micros(n: f64) -> u128 {
+        Self::nanos(n) * 1_000
+    }
+
+    /// Formats N nanoseconds as nanosecond time frame.
+    #[must_use]
+    pub const fn nanos(n: f64) -> u128 {
+        n as u128
     }
 }
