@@ -3,7 +3,7 @@ use fjall::{CompressionType, PartitionCreateOptions, TxKeyspace, TxPartition, Wr
 
 const PARTITION_NAME: &str = "_talna#tags";
 
-pub(crate) type OwnedTagSets = crate::HashMap<String, String>;
+pub type OwnedTagSets = crate::HashMap<String, String>;
 
 /// Maps Series IDs to their tags
 pub struct TagSets {

@@ -56,7 +56,7 @@ pub struct Database(Arc<DatabaseInner>);
 
 impl Database {
     /// Creates a new database builder.
-    pub fn builder() -> DatabaseBuilder {
+    #[must_use] pub fn builder() -> DatabaseBuilder {
         DatabaseBuilder::new()
     }
 
@@ -159,11 +159,7 @@ impl Database {
                             #[cfg(not(feature = "high_precision"))]
                             let value = v.read_f32::<BigEndian>()?;
 
-                            Ok(StreamItem {
-                                series_id,
-                                value,
-                                ts,
-                            })
+                            Ok(StreamItem { series_id, ts, value })
                         }
                         Err(e) => Err(e.into()),
                     })),
