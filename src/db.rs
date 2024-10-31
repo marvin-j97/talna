@@ -9,6 +9,7 @@ use crate::DatabaseBuilder;
 use crate::MetricName;
 use crate::SeriesId;
 use crate::TagSet;
+use crate::Timestamp;
 use crate::Value;
 use byteorder::{BigEndian, ReadBytesExt};
 use fjall::{Partition, PartitionCreateOptions, TxKeyspace};
@@ -22,7 +23,7 @@ pub const MINUTE_IN_NS: u128 = 60_000_000_000;
 #[derive(Debug)]
 pub struct StreamItem {
     pub series_id: SeriesId,
-    pub ts: u128,
+    pub ts: Timestamp,
     pub value: Value,
 }
 
@@ -56,7 +57,8 @@ pub struct Database(Arc<DatabaseInner>);
 
 impl Database {
     /// Creates a new database builder.
-    #[must_use] pub fn builder() -> DatabaseBuilder {
+    #[must_use]
+    pub fn builder() -> DatabaseBuilder {
         DatabaseBuilder::new()
     }
 
@@ -87,8 +89,8 @@ impl Database {
         })))
     }
 
-    fn format_data_point_key(series_id: SeriesId, ts: u128) -> [u8; 24] {
-        let mut data_point_key = [0; std::mem::size_of::<u64>() + std::mem::size_of::<u128>()];
+    fn format_data_point_key(series_id: SeriesId, ts: Timestamp) -> [u8; 24] {
+        let mut data_point_key = [0; std::mem::size_of::<u64>() + std::mem::size_of::<Timestamp>()];
         data_point_key[0..8].copy_from_slice(&series_id.to_be_bytes());
         data_point_key[8..24].copy_from_slice(&(!ts).to_be_bytes());
         data_point_key
@@ -97,7 +99,7 @@ impl Database {
     fn prepare_query(
         &self,
         series_ids: &[SeriesId],
-        (min, max): (Bound<u128>, Bound<u128>),
+        (min, max): (Bound<Timestamp>, Bound<Timestamp>),
     ) -> crate::Result<Vec<SeriesStream>> {
         use fjall::Slice;
         use Bound::{Excluded, Included, Unbounded};
@@ -159,7 +161,11 @@ impl Database {
                             #[cfg(not(feature = "high_precision"))]
                             let value = v.read_f32::<BigEndian>()?;
 
-                            Ok(StreamItem { series_id, ts, value })
+                            Ok(StreamItem {
+                                series_id,
+                                ts,
+                                value,
+                            })
                         }
                         Err(e) => Err(e.into()),
                     })),
@@ -172,7 +178,7 @@ impl Database {
         &self,
         metric: &str,
         filter_expr: &str,
-        (min, max): (Bound<u128>, Bound<u128>),
+        (min, max): (Bound<Timestamp>, Bound<Timestamp>),
     ) -> crate::Result<Vec<SeriesStream>> {
         // TODO: crate::Error with InvalidQuery enum variant
         let filter = parse_filter_query(filter_expr).expect("filter should be valid");
@@ -310,7 +316,7 @@ impl Database {
     pub fn write_at(
         &self,
         metric: MetricName,
-        ts: u128,
+        ts: Timestamp,
         value: Value,
         tags: &TagSet,
     ) -> crate::Result<()> {

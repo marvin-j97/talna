@@ -7,7 +7,7 @@ mod min;
 mod stream;
 mod sum;
 
-use crate::Value;
+use crate::{Timestamp, Value};
 
 pub use avg::Average;
 pub use builder::Builder;
@@ -21,10 +21,10 @@ pub use sum::Sum;
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct Bucket {
     /// The lower time bound (nanosecond timestamp)
-    pub start: u128,
+    pub start: Timestamp,
 
     /// The upper time bound (nanosecond timestamp)
-    pub end: u128,
+    pub end: Timestamp,
 
     /// The aggregated value
     pub value: Value,
@@ -36,7 +36,7 @@ pub struct Bucket {
 impl Bucket {
     /// Calculates the middle timestamp.
     #[must_use]
-    pub fn middle(&self) -> u128 {
+    pub fn middle(&self) -> Timestamp {
         let diff = self.end - self.start;
         self.start + diff / 2
     }

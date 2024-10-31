@@ -3,7 +3,7 @@ use crate::{
     agg::stream::Aggregator,
     db::{SeriesStream, StreamItem},
     merge::Merger,
-    Database,
+    Database, Timestamp,
 };
 use std::marker::PhantomData;
 
@@ -23,13 +23,13 @@ pub struct Builder<'a, A: Aggregation> {
     pub(crate) group_by: &'a str,
 
     /// Bucket "width" in nanoseconds
-    pub(crate) bucket_width: u128,
+    pub(crate) bucket_width: Timestamp,
 
     /// Minimum timestamp to scan
-    pub(crate) min_ts: Option<u128>,
+    pub(crate) min_ts: Option<Timestamp>,
 
     /// Maximum timestamp to scan
-    pub(crate) max_ts: Option<u128>,
+    pub(crate) max_ts: Option<Timestamp>,
 }
 
 impl<'a, A: Aggregation> Clone for Builder<'a, A> {
@@ -62,12 +62,12 @@ impl<'a, A: Aggregation> Builder<'a, A> {
         self
     }
 
-    pub fn start(mut self, ts: u128) -> Self {
+    pub fn start(mut self, ts: Timestamp) -> Self {
         self.min_ts = Some(ts);
         self
     }
 
-    pub fn end(mut self, ts: u128) -> Self {
+    pub fn end(mut self, ts: Timestamp) -> Self {
         self.max_ts = Some(ts);
         self
     }

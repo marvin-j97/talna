@@ -103,6 +103,9 @@ pub type TagSet<'a> = [(&'a str, &'a str)];
 #[doc(hidden)]
 pub use series_key::SeriesKey;
 
+/// Nanosecond timestamp
+pub type Timestamp = u128;
+
 /// Value used in time series
 #[cfg(feature = "high_precision")]
 pub type Value = f64;
