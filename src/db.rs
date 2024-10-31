@@ -69,6 +69,7 @@ impl Database {
             .open_partition(
                 "_talna#data",
                 PartitionCreateOptions::default()
+                    // .use_bloom_filters(false)
                     .manual_journal_persist(hyper_mode)
                     .block_size(64_000)
                     .compression(fjall::CompressionType::Lz4),
