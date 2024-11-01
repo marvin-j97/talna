@@ -882,6 +882,7 @@ dependencies = [
 name = "talna"
 version = "0.2.0"
 dependencies = [
+ "byteorder",
  "criterion",
  "fjall",
  "log",
