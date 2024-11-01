@@ -20,7 +20,26 @@ It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine, al
 
 With the storage engine being LSM-based, there's no degradation in write ingestion speed (even for datasets much larger than RAM), low write amplification (good for SSDs) and on-disk data is compressed (again, good for SSDs).
 
-The tagging and querying mechanism is modelled after Datadog's metrics service (<https://www.datadoghq.com/blog/engineering/timeseries-indexing-at-scale/>).
+## Data model
+
+> The tagging and querying mechanism is modelled after Datadog's metrics service (<https://www.datadoghq.com/blog/engineering/timeseries-indexing-at-scale/>).
+
+A (time) series is a list of data points.
+
+Each data point has
+
+- a nanosecond timestamp, which is also its primary key (big-endian stored negated, because we want to scan from oldest to newest, and forwards scans are faster)
+- the actual value (float)
+- a tagset (list of key-value pairs, e.g. “service=db; env=prod”)
+- a metric name (e.g. “cpu.total”)
+
+A `Database` is contained in a single Fjall `Keyspace` and consists of a couple of partitions (prefixed by `_talna#`). This way it can be integrated in an existing application using Fjall.
+
+Every permutation of { metric, tagsets } is assigned a `SeriesKey`. This maps to a Series ID.
+
+Each series’ tagset is stored in the `Tagsets` partition, used for aggregation.
+
+Lastly, each metric and tag is indexed in an inverted index (`TagIndex`). Queries perform lookups to that index to get a list of series IDs that match a query. This way any query AST can be modelled by simply union-ing or intersecting postings lists of that inverted index.
 
 Data points are f32s by default, but can be switched to f64 using the `high_precision` feature flag.
 

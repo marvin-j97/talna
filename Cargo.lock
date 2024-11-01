@@ -332,9 +332,9 @@ checksum = "e8c02a5121d4ea3eb16a80748c74f5549a5665e4c21333c6098f283870fbdea6"
 
 [[package]]
 name = "fjall"
-version = "2.2.0"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "454ffab4307857262156b33ec6d3e61c07a7cda1062b26d368d75aca6d2d16d8"
+checksum = "d02e23a96587ec8075cf52c37c18471d8ff6974fc84380ef73b9cdd3f4660b8f"
 dependencies = [
  "byteorder",
  "dashmap",
