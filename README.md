@@ -28,7 +28,7 @@ A (time) series is a list of data points.
 
 Each data point has
 
-- a nanosecond timestamp, which is also its primary key (big-endian stored negated, because we want to scan from oldest to newest, and forwards scans are faster)
+- a nanosecond timestamp, which is also its primary key (big-endian stored negated, because we want to scan from newest to oldest, and forwards scans are faster)
 - the actual value (float)
 - a tagset (list of key-value pairs, e.g. “service=db; env=prod”)
 - a metric name (e.g. “cpu.total”)
