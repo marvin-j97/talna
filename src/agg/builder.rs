@@ -62,21 +62,29 @@ impl<'a, A: Aggregation> Builder<'a, A> {
         self
     }
 
+    /// Sets the lower time bound.
     pub fn start(mut self, ts: Timestamp) -> Self {
         self.min_ts = Some(ts);
         self
     }
 
+    /// Sets the lower time bound relative to the current time.
+    ///
+    /// It is equivalent to `.start(timestamp() - window)`.
     pub fn start_relative(mut self, window: u128) -> Self {
         self.min_ts = Some(timestamp() - window);
         self
     }
 
+    /// Sets the upper time bound.
     pub fn end(mut self, ts: Timestamp) -> Self {
         self.max_ts = Some(ts);
         self
     }
 
+    /// Sets the upper time bound relative to the current time.
+    ///
+    /// It is equivalent to `.end(timestamp() - window)`.
     pub fn end_relative(mut self, window: u128) -> Self {
         self.max_ts = Some(timestamp() - window);
         self

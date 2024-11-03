@@ -28,14 +28,14 @@ pub struct Builder {
 impl Builder {
     pub(crate) fn new() -> Self {
         Self {
-            cache_size_mib: 64,
+            cache_size_mib: 32,
             hyper_mode: false,
         }
     }
 
     /// Sets the cache size in MiB.
     ///
-    /// Default = 64 MiB
+    /// Default = 32 MiB
     #[must_use]
     pub fn cache_size_mib(mut self, mib: u64) -> Self {
         self.cache_size_mib = mib;
