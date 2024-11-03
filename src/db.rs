@@ -72,7 +72,7 @@ impl Database {
                 "_talna#data",
                 PartitionCreateOptions::default()
                     .use_bloom_filters(false)
-                    .manual_journal_persist(hyper_mode)
+                    .manual_journal_persist(true)
                     .block_size(64_000)
                     .compression(fjall::CompressionType::Lz4),
             )?
@@ -331,6 +331,10 @@ impl Database {
 
         let data_point_key = Self::format_data_point_key(series_id, ts);
         self.0.data.insert(data_point_key, value.to_be_bytes())?;
+
+        if !self.0.hyper_mode {
+            self.0.keyspace.persist(fjall::PersistMode::Buffer)?;
+        }
 
         Ok(())
     }
