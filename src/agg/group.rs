@@ -40,7 +40,7 @@ where
     I: Iterator<Item = crate::Result<StreamItem>>,
 {
     /// Consumes all groups, returning a dictionary of time series data,
-    /// mapping each group to a vector of data points (`Bucket`).
+    /// mapping each group to a list of data points (`Bucket`).
     ///
     /// # Errors
     ///
