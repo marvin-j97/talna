@@ -3,7 +3,7 @@ use crate::{
     agg::stream::Aggregator,
     db::{SeriesStream, StreamItem},
     merge::Merger,
-    Database, Timestamp,
+    timestamp, Database, Timestamp,
 };
 use std::marker::PhantomData;
 
@@ -64,6 +64,12 @@ impl<'a, A: Aggregation> Builder<'a, A> {
 
     pub fn start(mut self, ts: Timestamp) -> Self {
         self.min_ts = Some(ts);
+        self
+    }
+
+    // TODO: need a better name
+    pub fn into_past(mut self, window: u128) -> Self {
+        self.min_ts = Some(timestamp() - window);
         self
     }
 

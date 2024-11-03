@@ -116,15 +116,11 @@ impl Database {
                             Box::new(self.0.data.prefix(series_id.to_be_bytes()))
                         }
                         (min @ (Included(_) | Excluded(_)), Unbounded) => {
-                            let series_id_prefix_bytes = series_id.to_be_bytes();
+                            let max =
+                                Included(Self::format_data_point_key(series_id, Timestamp::MAX));
                             let min = min.map(|ts| Self::format_data_point_key(series_id, ts));
 
-                            Box::new(self.0.data.range((Unbounded, min)).take_while(move |kv| {
-                                match kv {
-                                    Ok((k, _)) => k.starts_with(&series_id_prefix_bytes),
-                                    Err(_) => true,
-                                }
-                            }))
+                            Box::new(self.0.data.range((max, min)))
                         }
                         (Unbounded, max @ (Included(_) | Excluded(_))) => {
                             let min = Self::format_data_point_key(series_id, 0);
