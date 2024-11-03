@@ -67,14 +67,18 @@ impl<'a, A: Aggregation> Builder<'a, A> {
         self
     }
 
-    // TODO: need a better name
-    pub fn into_past(mut self, window: u128) -> Self {
+    pub fn start_relative(mut self, window: u128) -> Self {
         self.min_ts = Some(timestamp() - window);
         self
     }
 
     pub fn end(mut self, ts: Timestamp) -> Self {
         self.max_ts = Some(ts);
+        self
+    }
+
+    pub fn end_relative(mut self, window: u128) -> Self {
+        self.max_ts = Some(timestamp() - window);
         self
     }
 
