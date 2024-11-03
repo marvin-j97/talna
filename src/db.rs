@@ -90,7 +90,9 @@ impl Database {
     }
 
     fn format_data_point_key(series_id: SeriesId, ts: Timestamp) -> [u8; 24] {
-        let mut data_point_key = [0; std::mem::size_of::<u64>() + std::mem::size_of::<Timestamp>()];
+        let mut data_point_key =
+            [0; std::mem::size_of::<SeriesId>() + std::mem::size_of::<Timestamp>()];
+
         data_point_key[0..8].copy_from_slice(&series_id.to_be_bytes());
         data_point_key[8..24].copy_from_slice(&(!ts).to_be_bytes());
         data_point_key
@@ -317,7 +319,7 @@ impl Database {
         tags: &TagSet,
     ) -> crate::Result<()> {
         let series_key = SeriesKey::format(metric, tags);
-        let series_id: Option<u64> = self.0.smap.get(&series_key)?;
+        let series_id: Option<SeriesId> = self.0.smap.get(&series_key)?;
 
         let series_id = if let Some(series_id) = series_id {
             // NOTE: Series already exists (happy path)

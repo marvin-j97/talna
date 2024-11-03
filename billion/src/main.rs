@@ -23,9 +23,9 @@ fn main() -> talna::Result<()> {
 
     let path = Path::new(".testy");
 
-    /* if path.try_exists()? {
+    if path.try_exists()? {
         std::fs::remove_dir_all(path)?;
-    } */
+    }
 
     {
         let db = Database::builder()
@@ -147,7 +147,7 @@ fn main() -> talna::Result<()> {
         log::info!("reopened DB in {:?}", start.elapsed());
     }
 
-    std::fs::remove_dir_all(".testy")?;
+    std::fs::remove_dir_all(path)?;
 
     Ok(())
 }

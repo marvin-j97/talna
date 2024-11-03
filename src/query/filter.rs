@@ -46,7 +46,7 @@ impl<'a> std::fmt::Display for Node<'a> {
     }
 }
 
-pub fn intersection(vecs: &[Vec<u64>]) -> Vec<u64> {
+pub fn intersection(vecs: &[Vec<SeriesId>]) -> Vec<SeriesId> {
     if vecs.is_empty() {
         return vec![];
     }
@@ -74,7 +74,7 @@ pub fn intersection(vecs: &[Vec<u64>]) -> Vec<u64> {
 }
 
 #[must_use]
-pub fn union(vecs: &[Vec<u64>]) -> Vec<u64> {
+pub fn union(vecs: &[Vec<SeriesId>]) -> Vec<SeriesId> {
     let mut result = vec![];
 
     for vec in vecs {

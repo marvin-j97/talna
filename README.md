@@ -45,26 +45,15 @@ Data points are f32s by default, but can be switched to f64 using the `high_prec
 
 ## Benchmark: 1 billion data points
 
-Default config, jemalloc, i9 11900k:
-
-```
-ingested 1 billion in 1191s
-write speed: 839630 writes per second
-peak mem: 177 MiB
-disk space: 10 GiB
-query [1M latest data points] in 135ms
-reopened DB in 353ms
-```
-
 Hyper mode, jemalloc, i9 11900k:
 
 ```
-ingested 1 billion in 638s
-write speed: 1567398 writes per second
-peak mem: 188 MiB
+ingested 1 billion in 765s
+write speed: 1307189 writes per second
+peak mem: 167 MiB
 disk space: 10 GiB
-query [1M latest data points] in 131ms
-reopened DB in 350ms
+query [1M latest data points] in 176ms
+reopened DB in 128ms
 ```
 
 ## Basic usage
