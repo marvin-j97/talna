@@ -105,4 +105,4 @@ let buckets = db
 println!("{buckets:#?}");
 ```
 
-![Timeseries parameters](./timeseries.svg)
+<img width="100%" src="./timeseries.svg" />
