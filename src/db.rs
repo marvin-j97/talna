@@ -63,9 +63,15 @@ impl Database {
     }
 
     pub(crate) fn from_keyspace(keyspace: TxKeyspace, hyper_mode: bool) -> crate::Result<Self> {
+        log::info!("Opening database using existing keyspace");
+
+        log::info!("Opening meta partitions");
+
         let tag_index = TagIndex::new(&keyspace)?;
         let tag_sets = TagSets::new(&keyspace)?;
         let series_mapping = SeriesMapping::new(&keyspace)?;
+
+        log::info!("Opening data partition");
 
         let data = keyspace
             .open_partition(

@@ -45,15 +45,22 @@ Data points are f32s by default, but can be switched to f64 using the `high_prec
 
 ## Benchmark: 1 billion data points
 
-Hyper mode, jemalloc, i9 11900k:
+Hyper mode, jemalloc, i9 11900k, Samsung PM9A3:
 
 ```
-ingested 1 billion in 765s
-write speed: 1307189 writes per second
-peak mem: 167 MiB
+ingested 1 billion in 769s
+write speed: 1300390 writes per second
+peak mem: 158 MiB
 disk space: 10 GiB
-query [1M latest data points] in 176ms
-reopened DB in 128ms
+query [1M latest data points] in 197ms
+reopened DB in 140ms
+```
+
+Run with:
+
+```bash
+cd billion
+cargo run -r
 ```
 
 ## Basic usage
@@ -97,3 +104,5 @@ let buckets = db
 
 println!("{buckets:#?}");
 ```
+
+![Timeseries parameters](./timeseries.svg)

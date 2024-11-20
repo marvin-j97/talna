@@ -29,7 +29,9 @@ fn main() -> talna::Result<()> {
 
     {
         let db = Database::builder()
-            .cache_size_mib(8) // TODO: cache currently bloats memory a lot because of Arcs in block cache
+            // TODO: cache currently bloats memory a lot because of Arcs in block cache
+            // TODO: timeseries would probably benefit a lot from a CompressedBlockCache (to skip I/O, but not CPU work)
+            .cache_size_mib(8)
             .hyper_mode(true)
             .open(path)?;
 
@@ -55,7 +57,7 @@ fn main() -> talna::Result<()> {
                 let proc = sys.processes();
                 let child = proc.get(&pid).unwrap();
                 max_memory_bytes.fetch_max(child.memory(), std::sync::atomic::Ordering::Relaxed);
-                std::thread::sleep(Duration::from_millis(100));
+                std::thread::sleep(Duration::from_millis(1_000));
             }
         });
 
