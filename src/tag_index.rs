@@ -6,6 +6,7 @@ const PARTITION_NAME: &str = "_talna#tagidx";
 
 /// Inverted index, mapping key:value tag pairs to series IDs
 pub struct TagIndex {
+    keyspace: TxKeyspace,
     partition: TxPartition,
 }
 
@@ -18,7 +19,10 @@ impl TagIndex {
 
         let partition = keyspace.open_partition(PARTITION_NAME, opts)?;
 
-        Ok(Self { partition })
+        Ok(Self {
+            keyspace: keyspace.clone(),
+            partition,
+        })
     }
 
     // TODO: could probably use varint encoding + delta encoding here
@@ -66,9 +70,6 @@ impl TagIndex {
 
         tx.fetch_update(&self.partition, term, |bytes| match bytes {
             Some(bytes) => {
-                // TODO: can be optimized by not deserializing the prev posting list...
-                // TODO: just increment length by 1, memcpy old posting list, then append series_id
-
                 let mut reader = &bytes[..];
 
                 let len = reader.read_u64::<BigEndian>().expect("should deserialize");
@@ -89,7 +90,6 @@ impl TagIndex {
         Ok(())
     }
 
-    // TODO: read_tx
     pub fn query_eq(&self, term: &str) -> crate::Result<Vec<SeriesId>> {
         Ok(self
             .partition
@@ -109,11 +109,12 @@ impl TagIndex {
             .unwrap_or_default())
     }
 
-    // TODO: read_tx
     pub fn query_prefix(&self, metric: MetricName, prefix: &str) -> crate::Result<Vec<SeriesId>> {
         let mut ids = vec![];
 
-        for kv in self.partition.inner().prefix(format!("{metric}#{prefix}")) {
+        let read_tx = self.keyspace.read_tx();
+
+        for kv in read_tx.prefix(&self.partition, format!("{metric}#{prefix}")) {
             let (_, v) = kv?;
 
             let mut reader = &v[..];

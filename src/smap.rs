@@ -6,6 +6,7 @@ use std::collections::HashSet;
 const PARTITION_NAME: &str = "_talna#smap";
 
 pub struct SeriesMapping {
+    keyspace: TxKeyspace,
     pub(crate) partition: TxPartition,
 }
 
@@ -18,7 +19,10 @@ impl SeriesMapping {
 
         let partition = keyspace.open_partition(PARTITION_NAME, opts)?;
 
-        Ok(Self { partition })
+        Ok(Self {
+            keyspace: keyspace.clone(),
+            partition,
+        })
     }
 
     pub fn insert(&self, tx: &mut WriteTransaction, series_key: &str, series_id: SeriesId) {
@@ -33,10 +37,10 @@ impl SeriesMapping {
     }
 
     pub fn list_all(&self) -> crate::Result<HashSet<SeriesId>> {
-        // TODO: read_tx
-        self.partition
-            .inner()
-            .iter()
+        let read_tx = self.keyspace.read_tx();
+
+        read_tx
+            .iter(&self.partition)
             .map(|kv| match kv {
                 Ok((_, v)) => {
                     let mut reader = &v[..];

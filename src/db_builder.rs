@@ -2,28 +2,14 @@ use crate::Database;
 use fjall::{BlockCache, TxKeyspace};
 use std::{path::Path, sync::Arc};
 
-/* /// Sets the database mode.
-#[derive(Default)]
-pub enum Mode {
-    #[default]
-    /// Every write operation will be flushed to OS buffers,
-    /// for application crash safety (not power loss safety).
-    Standard,
-
-    /// Increases write throughput at the cost of lower durability guarantees.
-    ///
-    /// Writes become faster by skipping the `write()` syscall to OS buffers.
-    ///
-    /// You can still choose to call [`Database::flush`] here and there to guarantee some
-    /// durability as desired.
-    Speedy,
-} */
-
 /// Builder for [`Database`].
 pub struct Builder {
     cache_size_mib: u64,
     hyper_mode: bool,
 }
+
+// TODO: prefix bloom filters would be *really* nice
+// TODO: if we can make lsm-tree optimize ranges that have a common prefix
 
 impl Builder {
     pub(crate) fn new() -> Self {

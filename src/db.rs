@@ -184,8 +184,9 @@ impl Database {
         filter_expr: &str,
         (min, max): (Bound<Timestamp>, Bound<Timestamp>),
     ) -> crate::Result<Vec<SeriesStream>> {
-        // TODO: crate::Error with InvalidQuery enum variant
-        let filter = parse_filter_query(filter_expr).expect("filter should be valid");
+        let Ok(filter) = parse_filter_query(filter_expr) else {
+            return Err(crate::Error::InvalidQuery);
+        };
 
         let series_ids = filter.evaluate(&self.0.smap, &self.0.tag_index, metric)?;
         if series_ids.is_empty() {
@@ -215,7 +216,7 @@ impl Database {
             phantom: PhantomData,
             database: self,
             metric_name: &metric,
-            filter_expr: "*", // TODO: need wildcard
+            filter_expr: "*",
             bucket_width: MINUTE_IN_NS,
             group_by,
             max_ts: None,
@@ -236,7 +237,7 @@ impl Database {
             phantom: PhantomData,
             database: self,
             metric_name: &metric,
-            filter_expr: "*", // TODO: need wildcard
+            filter_expr: "*",
             bucket_width: MINUTE_IN_NS,
             group_by,
             max_ts: None,
@@ -257,7 +258,7 @@ impl Database {
             phantom: PhantomData,
             database: self,
             metric_name: &metric,
-            filter_expr: "*", // TODO: need wildcard
+            filter_expr: "*",
             bucket_width: MINUTE_IN_NS,
             group_by,
             max_ts: None,
@@ -278,7 +279,7 @@ impl Database {
             phantom: PhantomData,
             database: self,
             metric_name: &metric,
-            filter_expr: "*", // TODO: need wildcard
+            filter_expr: "*",
             bucket_width: MINUTE_IN_NS,
             group_by,
             max_ts: None,
@@ -299,7 +300,7 @@ impl Database {
             phantom: PhantomData,
             database: self,
             metric_name: &metric,
-            filter_expr: "*", // TODO: need wildcard
+            filter_expr: "*",
             bucket_width: MINUTE_IN_NS,
             group_by,
             max_ts: None,

@@ -111,6 +111,7 @@ impl<'a> Node<'a> {
                 Ok(intersection(&ids))
             }
             Node::Or(children) => {
+                // TODO: evaluate lazily...
                 let ids = children
                     .iter()
                     .map(|c| Self::evaluate(c, smap, tag_index, metric_name))
