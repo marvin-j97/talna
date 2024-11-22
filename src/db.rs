@@ -190,11 +190,11 @@ impl Database {
 
         let series_ids = filter.evaluate(&self.0.smap, &self.0.tag_index, metric)?;
         if series_ids.is_empty() {
-            log::debug!("Query did not match any series");
+            log::debug!("Query {filter_expr:?} did not match any series");
             return Ok(vec![]);
         }
 
-        log::debug!(
+        log::trace!(
             "Querying metric {metric}{{{filter}}} [{min:?}..{max:?}] in series {series_ids:?}"
         );
 
@@ -370,7 +370,7 @@ impl Database {
         } else {
             // NOTE: Actually create series
 
-            // TODO: atomic, persistent counter
+            // TODO: 1.0.0 atomic, persistent counter
             let next_series_id = self.0.smap.partition.inner().len()? as SeriesId;
 
             log::trace!("Creating series {next_series_id} for permutation {series_key:?}");
@@ -1002,6 +1002,129 @@ mod tests {
                 _ => {
                     unreachable!();
                 }
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_wildcard() -> crate::Result<()> {
+        let folder = tempfile::tempdir()?;
+        let db = Database::builder().open(&folder)?;
+        let metric_name = MetricName::try_from("hello").unwrap();
+
+        db.write_at(
+            metric_name,
+            0,
+            4.0,
+            tagset!(
+                "env" => "prod",
+                "service" => "server.nginx",
+            ),
+        )?;
+        db.write_at(
+            metric_name,
+            0,
+            4.0,
+            tagset!(
+                "env" => "prod",
+                "service" => "db.bigtable",
+            ),
+        )?;
+        db.write_at(
+            metric_name,
+            0,
+            4.0,
+            tagset!(
+                "env" => "prod",
+                "service" => "db.neon",
+            ),
+        )?;
+        db.write_at(
+            metric_name,
+            0,
+            4.0,
+            tagset!(
+                "env" => "prod",
+                "service" => "db.postgres.14",
+            ),
+        )?;
+        db.write_at(
+            metric_name,
+            0,
+            4.0,
+            tagset!(
+                "env" => "prod",
+                "service" => "db.postgres.15",
+            ),
+        )?;
+        db.write_at(
+            metric_name,
+            0,
+            4.0,
+            tagset!(
+                "env" => "prod",
+                "service" => "db.postgres.16",
+            ),
+        )?;
+
+        {
+            let aggregator = db.count(metric_name, "env").build()?;
+            assert_eq!(1, aggregator.len());
+            assert!(aggregator.contains_key("prod"));
+            for (_, mut aggregator) in aggregator {
+                let bucket = aggregator.next().unwrap()?;
+                assert_eq!(6, bucket.len);
+            }
+        }
+
+        {
+            let aggregator = db
+                .count(metric_name, "env")
+                .filter("service:db.postgres.16")
+                .build()?;
+            assert_eq!(1, aggregator.len());
+            assert!(aggregator.contains_key("prod"));
+            for (_, mut aggregator) in aggregator {
+                let bucket = aggregator.next().unwrap()?;
+                assert_eq!(1, bucket.len);
+            }
+        }
+
+        {
+            let aggregator = db
+                .count(metric_name, "env")
+                .filter("service:db.postgres.*")
+                .build()?;
+            assert_eq!(1, aggregator.len());
+            assert!(aggregator.contains_key("prod"));
+            for (_, mut aggregator) in aggregator {
+                let bucket = aggregator.next().unwrap()?;
+                assert_eq!(3, bucket.len);
+            }
+        }
+
+        {
+            let aggregator = db
+                .count(metric_name, "env")
+                .filter("service:db.*")
+                .build()?;
+            assert_eq!(1, aggregator.len());
+            assert!(aggregator.contains_key("prod"));
+            for (_, mut aggregator) in aggregator {
+                let bucket = aggregator.next().unwrap()?;
+                assert_eq!(5, bucket.len);
+            }
+        }
+
+        {
+            let aggregator = db.count(metric_name, "env").filter("service:*").build()?;
+            assert_eq!(1, aggregator.len());
+            assert!(aggregator.contains_key("prod"));
+            for (_, mut aggregator) in aggregator {
+                let bucket = aggregator.next().unwrap()?;
+                assert_eq!(6, bucket.len);
             }
         }
 

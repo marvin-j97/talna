@@ -23,7 +23,7 @@ impl TagSets {
     }
 
     pub fn insert(&self, tx: &mut WriteTransaction, series_id: SeriesId, tags: &str) {
-        log::trace!("storing tag set {series_id:?} => {tags:?}");
+        //  log::trace!("Storing tag set {series_id:?} => {tags:?}");
         tx.insert(&self.partition, series_id.to_be_bytes(), tags);
     }
 

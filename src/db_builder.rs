@@ -8,8 +8,8 @@ pub struct Builder {
     hyper_mode: bool,
 }
 
-// TODO: prefix bloom filters would be *really* nice
-// TODO: if we can make lsm-tree optimize ranges that have a common prefix
+// TODO: 1.0.0 prefix bloom filters would be *really* nice
+// if we can make lsm-tree optimize ranges that have a common prefix
 
 impl Builder {
     pub(crate) fn new() -> Self {

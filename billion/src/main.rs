@@ -29,8 +29,8 @@ fn main() -> talna::Result<()> {
 
     {
         let db = Database::builder()
-            // TODO: cache currently bloats memory a lot because of Arcs in block cache
-            // TODO: timeseries would probably benefit a lot from a CompressedBlockCache (to skip I/O, but not CPU work)
+            // TODO: 1.0.0 cache currently bloats memory a lot because of Arcs in block cache
+            // timeseries would probably benefit a lot from a CompressedBlockCache (to skip I/O, but not CPU work)
             .cache_size_mib(8)
             .hyper_mode(true)
             .open(path)?;

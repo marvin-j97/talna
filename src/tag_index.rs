@@ -66,7 +66,7 @@ impl TagIndex {
         term: &str,
         series_id: SeriesId,
     ) -> crate::Result<()> {
-        log::trace!("indexing {term:?} => {series_id}");
+        // log::trace!("Indexing {term:?} => {series_id}");
 
         tx.fetch_update(&self.partition, term, |bytes| match bytes {
             Some(bytes) => {
@@ -80,7 +80,7 @@ impl TagIndex {
                 }
                 postings.push(series_id);
 
-                log::trace!("posting list {term:?} is now {postings:?}");
+                // log::trace!("posting list {term:?} is now {postings:?}");
 
                 Some(Self::serialize_postings_list(&postings).into())
             }
@@ -88,6 +88,16 @@ impl TagIndex {
         })?;
 
         Ok(())
+    }
+
+    pub fn format_key(metric_name: &str, key: &str, value: &str) -> String {
+        let mut s = String::with_capacity(metric_name.len() + 1 + key.len() + 1 + value.len());
+        s.push_str(metric_name);
+        s.push('#');
+        s.push_str(key);
+        s.push(':');
+        s.push_str(value);
+        s
     }
 
     pub fn query_eq(&self, term: &str) -> crate::Result<Vec<SeriesId>> {
@@ -109,12 +119,12 @@ impl TagIndex {
             .unwrap_or_default())
     }
 
-    pub fn query_prefix(&self, metric: MetricName, prefix: &str) -> crate::Result<Vec<SeriesId>> {
+    pub fn query_prefix(&self, prefix: &str) -> crate::Result<Vec<SeriesId>> {
         let mut ids = vec![];
 
         let read_tx = self.keyspace.read_tx();
 
-        for kv in read_tx.prefix(&self.partition, format!("{metric}#{prefix}")) {
+        for kv in read_tx.prefix(&self.partition, prefix) {
             let (_, v) = kv?;
 
             let mut reader = &v[..];
@@ -189,7 +199,10 @@ mod tests {
 
         tx.commit()?;
 
-        assert_eq!(vec![0, 3], tag_index.query_prefix(metric, "service:prod-")?);
+        assert_eq!(
+            vec![0, 3],
+            tag_index.query_prefix("cpu.total:service:prod-")?
+        );
 
         Ok(())
     }

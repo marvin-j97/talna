@@ -30,8 +30,8 @@ Each data point has
 
 - a nanosecond timestamp, which is also its primary key (big-endian stored negated, because we want to scan from newest to oldest, and forwards scans are faster)
 - the actual value (float)
-- a tagset (list of key-value pairs, e.g. “service=db; env=prod”)
-- a metric name (e.g. “cpu.total”)
+- a tagset (list of key-value pairs, e.g. "service=db; env=prod")
+- a metric name (e.g. "cpu.total")
 
 A `Database` is contained in a single Fjall `Keyspace` and consists of a couple of partitions (prefixed by `_talna#`). This way it can be integrated in an existing application using Fjall.
 
@@ -106,3 +106,42 @@ println!("{buckets:#?}");
 ```
 
 ![Timeseries parameters](./timeseries.svg)
+
+## Filter query operators
+
+The filter query DSL supports a couple of operators:
+
+### AND
+
+`env:prod AND service:db`
+
+### OR
+
+`db:postgres OR db:mariadb`
+
+### NOT
+
+`!db:postgres AND !db:mariadb`
+
+### Wildcard
+
+`service:db.postgres.v* OR service:db.mariadb.v*`
+
+Note that wildcards can only be applied on the right side, so tags need to be designed in *increasing* cardinality (hierarchical):
+
+`BAD!: loc:munich.bavaria.germany.eu.earth`
+
+`GOOD!: loc:earth.eu.germany.bavaria.munich`, allows queries like: `loc:earth.eu.germany.*`
+
+### Nesting
+
+`env:prod AND (service:db OR service:rest-api OR service:graphql-api)`
+
+<!-- TODO: 1.0.0 Set, 
+e.g. service:[db, rest-api, graphql-api]
+    expands to (x OR y OR z), see nom parser
+
+### Set
+
+`env:prod AND service:[db, rest-api, graphql-api]`
+-->

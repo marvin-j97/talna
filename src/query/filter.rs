@@ -14,6 +14,7 @@ pub enum Node<'a> {
     And(Vec<Self>),
     Or(Vec<Self>),
     Eq(Tag<'a>),
+    Wildcard(Tag<'a>),
     Not(Box<Self>),
     AllStar,
 }
@@ -22,6 +23,7 @@ impl<'a> std::fmt::Display for Node<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Node::Eq(leaf) => write!(f, "{}:{}", leaf.key, leaf.value),
+            Node::Wildcard(leaf) => write!(f, "{}:{}*", leaf.key, leaf.value),
             Node::And(nodes) => write!(
                 f,
                 "({})",
@@ -88,7 +90,7 @@ pub fn union(vecs: &[Vec<SeriesId>]) -> Vec<SeriesId> {
 }
 
 impl<'a> Node<'a> {
-    // TODO: unit test and add benchmark case
+    // TODO: 1.0.0 unit test and add benchmark case
     pub fn evaluate(
         &self,
         smap: &SeriesMapping,
@@ -98,8 +100,10 @@ impl<'a> Node<'a> {
         match self {
             Node::AllStar => tag_index.query_eq(metric_name),
             Node::Eq(leaf) => {
-                let term = format!("{metric_name}#{}:{}", leaf.key, leaf.value);
-                tag_index.query_eq(&term)
+                tag_index.query_eq(&TagIndex::format_key(metric_name, leaf.key, leaf.value))
+            }
+            Node::Wildcard(leaf) => {
+                tag_index.query_prefix(&TagIndex::format_key(metric_name, leaf.key, leaf.value))
             }
             Node::And(children) => {
                 // TODO: evaluate lazily...
@@ -137,6 +141,7 @@ impl<'a> Node<'a> {
 
 #[derive(Debug)]
 pub enum Item<'a> {
+    Wildcard((&'a str, &'a str)),
     Identifier((&'a str, &'a str)),
     And,
     Or,
@@ -165,6 +170,15 @@ pub fn parse_filter_query(s: &str) -> Result<Node, crate::Error> {
                 let k = splits.next().expect("should be valid identifier");
                 let v = splits.next().expect("should be valid identifier");
                 output_queue.push_back(Item::Identifier((k, v)));
+            }
+            lexer::Token::Wildcard(id) => {
+                let mut splits = id.split(':');
+                let k = splits.next().expect("should be valid identifier");
+                let v = splits
+                    .next()
+                    .expect("should be valid identifier")
+                    .trim_end_matches("*");
+                output_queue.push_back(Item::Wildcard((k, v)));
             }
             lexer::Token::And => {
                 loop {
@@ -241,6 +255,9 @@ pub fn parse_filter_query(s: &str) -> Result<Node, crate::Error> {
             Item::Identifier((key, value)) => {
                 buf.push(Node::Eq(Tag { key, value }));
             }
+            Item::Wildcard((key, value)) => {
+                buf.push(Node::Wildcard(Tag { key, value }));
+            }
             Item::And => {
                 let Some(b) = buf.pop() else {
                     return Err(crate::Error::InvalidQuery);
@@ -316,6 +333,17 @@ mod tests {
                 }),
             ]))),
             parse_filter_query("!(hello:world OR hallo:welt)").unwrap()
+        );
+    }
+
+    #[test_log::test]
+    fn test_parse_filter_query_wildcard_1() {
+        assert_eq!(
+            Node::Wildcard(Tag {
+                key: "service",
+                value: "db-"
+            }),
+            parse_filter_query("service:db-*").unwrap()
         );
     }
 
