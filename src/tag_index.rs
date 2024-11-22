@@ -201,7 +201,7 @@ mod tests {
 
         assert_eq!(
             vec![0, 3],
-            tag_index.query_prefix("cpu.total:service:prod-")?
+            tag_index.query_prefix("cpu.total#service:prod-")?
         );
 
         Ok(())
