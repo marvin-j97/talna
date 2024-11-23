@@ -3,7 +3,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use fjall::{CompressionType, PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
 use std::collections::HashSet;
 
-const PARTITION_NAME: &str = "_talna#smap";
+const PARTITION_NAME: &str = "_talna#v1#smap";
 
 pub struct SeriesMapping {
     keyspace: TxKeyspace,

@@ -21,6 +21,16 @@ where
     }
 }
 
+impl<'a, A, I> std::ops::DerefMut for GroupedAggregation<'a, A, I>
+where
+    A: Aggregation,
+    I: Iterator<Item = crate::Result<StreamItem>>,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 impl<'a, A, I> IntoIterator for GroupedAggregation<'a, A, I>
 where
     A: Aggregation,

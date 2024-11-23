@@ -75,7 +75,7 @@ impl Database {
 
         let data = keyspace
             .open_partition(
-                "_talna#data",
+                "_talna#v1#data",
                 PartitionCreateOptions::default()
                     .use_bloom_filters(false)
                     .manual_journal_persist(true)

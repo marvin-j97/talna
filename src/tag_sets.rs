@@ -1,7 +1,7 @@
 use crate::SeriesId;
 use fjall::{CompressionType, PartitionCreateOptions, TxKeyspace, TxPartition, WriteTransaction};
 
-const PARTITION_NAME: &str = "_talna#tags";
+const PARTITION_NAME: &str = "_talna#v1#tags";
 
 pub type OwnedTagSets = crate::HashMap<String, String>;
 
