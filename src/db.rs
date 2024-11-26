@@ -62,6 +62,26 @@ impl Database {
         DatabaseBuilder::new()
     }
 
+    // TODO: 1.0.0 need fjall 2.6.0
+    /// Removes disk segments that are older than `lifetime_ns`.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if an I/O error occurred.
+    pub fn truncate(&self, lifetime_ns: u128) -> crate::Result<()> {
+        use fjall::AbstractTree;
+
+        let s = (lifetime_ns / 1_000 / 1_000 / 1_000) as u64;
+
+        self.0
+            .data
+            .tree
+            .compact(Arc::new(fjall::compaction::Fifo::new(u64::MAX, Some(s))), 0)
+            .map_err(fjall::Error::from)?;
+
+        Ok(())
+    }
+
     pub(crate) fn from_keyspace(keyspace: TxKeyspace, hyper_mode: bool) -> crate::Result<Self> {
         log::info!("Opening database using existing keyspace");
 
