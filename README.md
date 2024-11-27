@@ -129,9 +129,9 @@ The filter query DSL supports a couple of operators:
 
 Note that wildcards can only be applied on the right side, so tags need to be designed in *increasing* cardinality (hierarchical):
 
-`BAD!: loc:munich.bavaria.germany.eu.earth`
+BAD!: `loc:munich.bavaria.germany.eu.earth`
 
-`GOOD!: loc:earth.eu.germany.bavaria.munich`, allows queries like: `loc:earth.eu.germany.*`
+GOOD!: `loc:earth.eu.germany.bavaria.munich`, allows queries like: `loc:earth.eu.germany.*`
 
 ### Nesting
 
