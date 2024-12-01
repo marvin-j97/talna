@@ -41,7 +41,7 @@ Each series’ tagset is stored in the `Tagsets` partition, used for aggregation
 
 Lastly, each metric and tag is indexed in an inverted index (`TagIndex`). Queries perform lookups to that index to get a list of series IDs that match a query. This way any query AST can be modelled by simply union-ing or intersecting postings lists of that inverted index.
 
-Data points are f32s by default, but can be switched to f64 using the `high_precision` feature flag.
+Data points are *f32* by default, but can be switched to *f64* using the `high_precision` feature flag.
 
 ## Benchmark: 1 billion data points
 
