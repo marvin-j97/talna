@@ -68,6 +68,7 @@
 #![allow(clippy::missing_const_for_fn)]
 #![warn(clippy::multiple_crate_versions)]
 #![warn(clippy::result_unit_err)]
+#![warn(clippy::needless_lifetimes)]
 
 mod agg;
 mod db;
