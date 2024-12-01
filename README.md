@@ -30,8 +30,8 @@ Each data point has
 
 - a nanosecond timestamp, which is also its primary key (big-endian stored negated, because we want to scan from newest to oldest, and forwards scans are faster)
 - the actual value (float)
-- a tagset (list of key-value pairs, e.g. "service=db; env=prod")
-- a metric name (e.g. "cpu.total")
+- a tagset (list of key-value pairs, e.g. `service=db; env=prod`)
+- a metric name (e.g. `cpu.total`)
 
 A `Database` is contained in a single Fjall `Keyspace` and consists of a couple of partitions (prefixed by `_talna#`). This way it can be integrated in an existing application using Fjall.
 
