@@ -18,7 +18,7 @@ A simple, embeddable time series database.
 
 It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine, allowing around ~1M data points per second to be ingested.
 
-With the storage engine being LSM-based, there's no degradation in write ingestion speed (even for datasets much larger than RAM), low write amplification (good for SSDs) and on-disk data is compressed (again, good for SSDs).
+With the LSM-based storage engine, there's no degradation in write ingestion speed (even for datasets much larger than RAM), low write amplification (good for SSDs) and on-disk data is compressed (again, good for SSDs).
 
 ## Data model
 
