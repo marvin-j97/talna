@@ -69,6 +69,7 @@ cargo run -r
 use talna::{Database, Duration, MetricName, tagset, timestamp};
 
 let db = Database::builder().open(path)?;
+// or: Database::from_keyspace(existing_keyspace)
 
 let metric_name = MetricName::try_from("cpu.total").unwrap();
 
