@@ -100,7 +100,14 @@ impl Database {
                     .use_bloom_filters(false)
                     .manual_journal_persist(true)
                     .block_size(64_000)
-                    .compression(fjall::CompressionType::Lz4),
+                    .compression(fjall::CompressionType::Lz4)
+                    .compaction_strategy(fjall::compaction::Strategy::Leveled(
+                        fjall::compaction::Levelled {
+                            target_size: /* 128 MiB */ 128 * 1_024 * 1_024,
+                            level_ratio: 10,
+                            ..Default::default()
+                        },
+                    )),
             )?
             .inner()
             .clone();
@@ -166,12 +173,8 @@ impl Database {
                     tags,
                     reader: Box::new(kv_stream.map(move |x| match x {
                         Ok((k, v)) => {
-                            use std::io::Seek;
-
-                            let mut k = Cursor::new(k);
-
                             // Skip series ID
-                            k.seek_relative(std::mem::size_of::<SeriesId>() as i64)?;
+                            let mut k = &k[std::mem::size_of::<SeriesId>()..];
 
                             let ts = k.read_u128::<BigEndian>()?;
                             // NOTE: Invert timestamp back to original value

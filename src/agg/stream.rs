@@ -50,7 +50,7 @@ where
     }
 }
 
-impl<'a, A, I> Iterator for Aggregator<'a, A, I>
+impl<A, I> Iterator for Aggregator<'_, A, I>
 where
     A: Aggregation,
     I: Iterator<Item = crate::Result<StreamItem>>,

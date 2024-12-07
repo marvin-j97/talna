@@ -32,7 +32,7 @@ pub struct Builder<'a, A: Aggregation> {
     pub(crate) max_ts: Option<Timestamp>,
 }
 
-impl<'a, A: Aggregation> Clone for Builder<'a, A> {
+impl<A: Aggregation> Clone for Builder<'_, A> {
     fn clone(&self) -> Self {
         Self {
             phantom: PhantomData,

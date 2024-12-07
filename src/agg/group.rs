@@ -21,7 +21,7 @@ where
     }
 }
 
-impl<'a, A, I> std::ops::DerefMut for GroupedAggregation<'a, A, I>
+impl<A, I> std::ops::DerefMut for GroupedAggregation<'_, A, I>
 where
     A: Aggregation,
     I: Iterator<Item = crate::Result<StreamItem>>,
@@ -44,7 +44,7 @@ where
     }
 }
 
-impl<'a, A, I> GroupedAggregation<'a, A, I>
+impl<A, I> GroupedAggregation<'_, A, I>
 where
     A: Aggregation,
     I: Iterator<Item = crate::Result<StreamItem>>,

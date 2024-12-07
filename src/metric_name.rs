@@ -6,7 +6,7 @@ const METRICS_NAME_CHARS: &str = "abcdefghijklmnopqrstuvwxyz_.";
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, std::hash::Hash, Debug)]
 pub struct MetricName<'a>(&'a str);
 
-impl<'a> std::fmt::Display for MetricName<'a> {
+impl std::fmt::Display for MetricName<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -32,7 +32,7 @@ impl<'a> std::ops::Deref for MetricName<'a> {
     }
 }
 
-impl<'a> AsRef<[u8]> for MetricName<'a> {
+impl AsRef<[u8]> for MetricName<'_> {
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()
     }

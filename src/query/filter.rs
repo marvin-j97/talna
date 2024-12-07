@@ -19,7 +19,7 @@ pub enum Node<'a> {
     AllStar,
 }
 
-impl<'a> std::fmt::Display for Node<'a> {
+impl std::fmt::Display for Node<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Node::Eq(leaf) => write!(f, "{}:{}", leaf.key, leaf.value),
@@ -89,7 +89,7 @@ pub fn union(vecs: &[Vec<SeriesId>]) -> Vec<SeriesId> {
     result
 }
 
-impl<'a> Node<'a> {
+impl Node<'_> {
     // TODO: 1.0.0 unit test and add benchmark case
     pub fn evaluate(
         &self,
