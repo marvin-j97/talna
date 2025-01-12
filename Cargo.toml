@@ -2,7 +2,7 @@
 name = "talna"
 description = "Simple, embeddable time series database"
 license = "MIT OR Apache-2.0"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.80"
 authors = ["marvin-j97"]
@@ -23,7 +23,7 @@ high_precision = []
 
 [dependencies]
 byteorder = "1.5.0"
-fjall = "2.4.0"
+fjall = "2.5.0"
 log = "0.4.22"
 logos = "0.14.0"
 # nom = "7.1.3"
