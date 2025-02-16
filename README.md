@@ -18,7 +18,7 @@ A simple, embeddable time series database.
 
 It uses <https://github.com/fjall-rs/fjall> as its underlying storage engine, allowing around ~1M data points per second to be ingested.
 
-With the storage engine being LSM-based, there's no degradation in write ingestion speed (even for datasets much larger than RAM), low write amplification (good for SSDs) and on-disk data is compressed (again, good for SSDs).
+With the LSM-based storage engine, there's no degradation in write ingestion speed (even for datasets much larger than RAM), low write amplification (good for SSDs) and on-disk data is compressed (again, good for SSDs).
 
 ## Data model
 
@@ -30,8 +30,8 @@ Each data point has
 
 - a nanosecond timestamp, which is also its primary key (big-endian stored negated, because we want to scan from newest to oldest, and forwards scans are faster)
 - the actual value (float)
-- a tagset (list of key-value pairs, e.g. "service=db; env=prod")
-- a metric name (e.g. "cpu.total")
+- a tagset (list of key-value pairs, e.g. `service=db; env=prod`)
+- a metric name (e.g. `cpu.total`)
 
 A `Database` is contained in a single Fjall `Keyspace` and consists of a couple of partitions (prefixed by `_talna#`). This way it can be integrated in an existing application using Fjall.
 
@@ -41,19 +41,19 @@ Each series’ tagset is stored in the `Tagsets` partition, used for aggregation
 
 Lastly, each metric and tag is indexed in an inverted index (`TagIndex`). Queries perform lookups to that index to get a list of series IDs that match a query. This way any query AST can be modelled by simply union-ing or intersecting postings lists of that inverted index.
 
-Data points are f32s by default, but can be switched to f64 using the `high_precision` feature flag.
+Data points are *f32* by default, but can be switched to *f64* using the `high_precision` feature flag.
 
 ## Benchmark: 1 billion data points
 
 Hyper mode, jemalloc, i9 11900k, Samsung PM9A3:
 
 ```
-ingested 1 billion in 769s
-write speed: 1300390 writes per second
-peak mem: 158 MiB
+ingested 1 billion in 734s
+write speed: 1362397 writes per second
+peak mem: 140 MiB
 disk space: 10 GiB
-query [1M latest data points] in 197ms
-reopened DB in 140ms
+query [1M latest data points] in 192ms
+reopened DB in 193ms
 ```
 
 Run with:
@@ -69,6 +69,7 @@ cargo run -r
 use talna::{Database, Duration, MetricName, tagset, timestamp};
 
 let db = Database::builder().open(path)?;
+// or: Database::from_keyspace(existing_keyspace)
 
 let metric_name = MetricName::try_from("cpu.total").unwrap();
 
@@ -129,9 +130,9 @@ The filter query DSL supports a couple of operators:
 
 Note that wildcards can only be applied on the right side, so tags need to be designed in *increasing* cardinality (hierarchical):
 
-`BAD!: loc:munich.bavaria.germany.eu.earth`
+BAD!: `loc:munich.bavaria.germany.eu.earth`
 
-`GOOD!: loc:earth.eu.germany.bavaria.munich`, allows queries like: `loc:earth.eu.germany.*`
+GOOD!: `loc:earth.eu.germany.bavaria.munich`, allows queries like: `loc:earth.eu.germany.*`
 
 ### Nesting
 

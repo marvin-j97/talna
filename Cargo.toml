@@ -23,7 +23,7 @@ high_precision = []
 
 [dependencies]
 byteorder = "1.5.0"
-fjall = "2.5.0"
+fjall = "2.6.3"
 log = "0.4.22"
 logos = "0.14.0"
 nom = "7.1.3"
