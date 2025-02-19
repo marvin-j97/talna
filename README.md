@@ -48,12 +48,12 @@ Data points are *f32* by default, but can be switched to *f64* using the `high_p
 Hyper mode, jemalloc, i9 11900k, Samsung PM9A3:
 
 ```
-ingested 1 billion in 769s
-write speed: 1300390 writes per second
-peak mem: 158 MiB
+ingested 1 billion in 734s
+write speed: 1362397 writes per second
+peak mem: 140 MiB
 disk space: 10 GiB
-query [1M latest data points] in 197ms
-reopened DB in 140ms
+query [1M latest data points] in 192ms
+reopened DB in 193ms
 ```
 
 Run with:

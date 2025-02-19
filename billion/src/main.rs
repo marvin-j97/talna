@@ -84,7 +84,7 @@ fn main() -> talna::Result<()> {
                     let value = rng.gen_range(0.0..100.0);
                     db.write_at(metric_name, items_written, value, tagset)?;
 
-                    if idx > 0 && idx % 5_000_000 == 0 {
+                    if idx > 0 && idx % 10_000_000 == 0 {
                         let elapsed = start.elapsed();
                         let elapsed_ns = elapsed.as_nanos();
 

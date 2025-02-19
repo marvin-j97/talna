@@ -29,6 +29,7 @@ pub struct StreamItem {
 
 pub struct SeriesStream {
     pub(crate) tags: OwnedTagSets,
+    // TODO: maybe generic param
     pub(crate) reader: Box<dyn Iterator<Item = crate::Result<StreamItem>>>,
 }
 
@@ -77,7 +78,7 @@ impl Database {
             .open_partition(
                 "_talna#v1#data",
                 PartitionCreateOptions::default()
-                    .use_bloom_filters(false)
+                    .bloom_filter_bits(None)
                     .manual_journal_persist(true)
                     .block_size(64_000)
                     .compression(fjall::CompressionType::Lz4),
@@ -96,11 +97,13 @@ impl Database {
     }
 
     fn format_data_point_key(series_id: SeriesId, ts: Timestamp) -> [u8; 24] {
-        let mut data_point_key =
-            [0; std::mem::size_of::<SeriesId>() + std::mem::size_of::<Timestamp>()];
+        const SKEY: usize = std::mem::size_of::<SeriesId>();
+        const TS: usize = std::mem::size_of::<Timestamp>();
 
-        data_point_key[0..8].copy_from_slice(&series_id.to_be_bytes());
-        data_point_key[8..24].copy_from_slice(&(!ts).to_be_bytes());
+        let mut data_point_key = [0; SKEY + TS];
+
+        data_point_key[0..SKEY].copy_from_slice(&series_id.to_be_bytes());
+        data_point_key[SKEY..(SKEY + TS)].copy_from_slice(&(!ts).to_be_bytes());
         data_point_key
     }
 
