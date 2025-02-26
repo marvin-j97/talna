@@ -150,7 +150,9 @@ pub enum Item<'a> {
     ParanClose,
 }
 
+// TODO: will be removed by nom parser
 #[doc(hidden)]
+#[allow(clippy::too_many_lines)]
 pub fn parse_filter_query(s: &str) -> Result<Node, crate::Error> {
     if s.trim() == "*" {
         return Ok(Node::AllStar);
@@ -159,8 +161,8 @@ pub fn parse_filter_query(s: &str) -> Result<Node, crate::Error> {
     let mut output_queue = VecDeque::new();
     let mut op_stack = VecDeque::new();
 
-    for tok in tokenize_filter_query(s) {
-        let Ok(tok) = tok else {
+    for token in tokenize_filter_query(s) {
+        let Ok(tok) = token else {
             return Err(crate::Error::InvalidQuery);
         };
 
@@ -282,8 +284,7 @@ pub fn parse_filter_query(s: &str) -> Result<Node, crate::Error> {
                 };
                 buf.push(Node::Not(Box::new(a)));
             }
-            Item::ParanOpen => return Err(crate::Error::InvalidQuery),
-            Item::ParanClose => return Err(crate::Error::InvalidQuery),
+            Item::ParanOpen | Item::ParanClose => return Err(crate::Error::InvalidQuery),
         }
     }
 
