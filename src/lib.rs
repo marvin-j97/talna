@@ -73,8 +73,8 @@
 mod agg;
 mod db;
 mod db_builder;
-mod duration;
 mod error;
+mod granularity;
 mod merge;
 mod metric_name;
 
@@ -93,8 +93,8 @@ type HashMap<K, V> = std::collections::HashMap<K, V, rustc_hash::FxBuildHasher>;
 pub use agg::{Bucket, GroupedAggregation};
 pub use db::Database;
 pub use db_builder::Builder as DatabaseBuilder;
-pub use duration::Duration;
 pub use error::{Error, Result};
+pub use granularity::Granularity;
 pub use metric_name::MetricName;
 pub use time::timestamp;
 

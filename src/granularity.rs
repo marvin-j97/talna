@@ -1,7 +1,7 @@
 /// Helpers for calculating durations
-pub struct Duration;
+pub struct Granularity;
 
-impl Duration {
+impl Granularity {
     /// Formats N years as nanosecond time frame.
     #[must_use]
     pub const fn years(n: f64) -> u128 {
