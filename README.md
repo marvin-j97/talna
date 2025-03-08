@@ -66,7 +66,7 @@ cargo run -r
 ## Basic usage
 
 ```rs
-use talna::{Database, Duration, MetricName, tagset, timestamp};
+use talna::{Database, Granularity, MetricName, tagset, timestamp};
 
 let db = Database::builder().open(path)?;
 // or: Database::from_keyspace(existing_keyspace)
@@ -99,7 +99,7 @@ let buckets = db
   // use .start() and .end() to set the time bounds
   .start(timestamp() - Duration::months(1.0))
   // use .granularity() to set the granularity (bucket width in nanoseconds)
-  .granularity(Duration::days(1.0))
+  .granularity(Granularity::days(1.0))
   .build()?
   .collect()?;
 
