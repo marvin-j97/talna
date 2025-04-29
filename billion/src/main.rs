@@ -30,7 +30,7 @@ fn main() -> talna::Result<()> {
     {
         let db = Database::builder()
             // TODO: 1.0.0 cache currently bloats memory a lot because of Arcs in block cache
-            // timeseries would probably benefit a lot from a CompressedBlockCache (to skip I/O, but not CPU work)
+            // should perform much better with fjall v3
             .cache_size_mib(8)
             .hyper_mode(true)
             .open(path)?;
